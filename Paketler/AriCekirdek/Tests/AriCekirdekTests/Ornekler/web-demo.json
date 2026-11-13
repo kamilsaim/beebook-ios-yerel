@@ -1,0 +1,298 @@
+{
+ "data": {
+  "hives": [
+   {
+    "id": "demo0000",
+    "num": "1",
+    "type": "Langstroth",
+    "queenStatus": "yes",
+    "queenColor": "yellow",
+    "strength": "4",
+    "race": "Kafkas",
+    "generation": "F1",
+    "year": "2024",
+    "notes": "Güçlü koloni",
+    "createdAt": "2026-11-13"
+   },
+   {
+    "id": "demo0001",
+    "num": "2",
+    "type": "Langstroth",
+    "queenStatus": "yes",
+    "queenColor": "green",
+    "strength": "5",
+    "race": "Kafkas",
+    "generation": "F2",
+    "year": "2025",
+    "notes": "",
+    "createdAt": "2026-11-13"
+   },
+   {
+    "id": "demo0002",
+    "num": "3",
+    "type": "Dadant",
+    "queenStatus": "no",
+    "queenColor": "white",
+    "strength": "2",
+    "race": "Anadolu",
+    "generation": "",
+    "year": "",
+    "notes": "Ana arı çıktı",
+    "createdAt": "2026-11-13"
+   },
+   {
+    "id": "demo0003",
+    "num": "4",
+    "type": "Langstroth",
+    "queenStatus": "yes",
+    "queenColor": "blue",
+    "strength": "3",
+    "race": "Karniyol",
+    "generation": "F1",
+    "year": "2025",
+    "notes": "",
+    "createdAt": "2026-11-13"
+   },
+   {
+    "id": "demo0004",
+    "num": "5",
+    "type": "Langstroth",
+    "queenStatus": "new",
+    "queenColor": "red",
+    "strength": "4",
+    "race": "Kafkas",
+    "generation": "F3",
+    "year": "2025",
+    "notes": "Yeni ana arı konuldu",
+    "createdAt": "2026-11-13"
+   },
+   {
+    "id": "demo0005",
+    "num": "6",
+    "type": "Yerli",
+    "queenStatus": "unknown",
+    "queenColor": "white",
+    "strength": "3",
+    "race": "Muğla",
+    "generation": "",
+    "year": "",
+    "notes": "",
+    "createdAt": "2026-11-13"
+   }
+  ],
+  "sales": [
+   {
+    "id": "demo0006",
+    "type": "honey",
+    "customer": "Ahmet Bey",
+    "date": "2026-11-05",
+    "qty": 15,
+    "unit": "kg",
+    "price": 350,
+    "total": 5250,
+    "payment": "paid",
+    "note": ""
+   },
+   {
+    "id": "demo0007",
+    "type": "honey",
+    "customer": "Market",
+    "date": "2026-11-10",
+    "qty": 30,
+    "unit": "kg",
+    "price": 320,
+    "total": 9600,
+    "payment": "paid",
+    "note": ""
+   },
+   {
+    "id": "demo0008",
+    "type": "queen",
+    "customer": "Mustafa Usta",
+    "date": "2026-11-12",
+    "qty": 5,
+    "unit": "adet",
+    "price": 800,
+    "total": 4000,
+    "payment": "pending",
+    "note": ""
+   },
+   {
+    "id": "demo0009",
+    "type": "milk",
+    "customer": "Eczane",
+    "date": "2026-11-08",
+    "qty": 200,
+    "unit": "gr",
+    "price": 12,
+    "total": 2400,
+    "payment": "paid",
+    "note": ""
+   }
+  ],
+  "expenses": [
+   {
+    "id": "demo000a",
+    "type": "seker",
+    "amount": 2800,
+    "date": "2026-11-03",
+    "desc": "20 kg şeker"
+   },
+   {
+    "id": "demo000b",
+    "type": "ilac",
+    "amount": 1200,
+    "date": "2026-11-07",
+    "desc": "Varroa ilacı"
+   },
+   {
+    "id": "demo000c",
+    "type": "mazot",
+    "amount": 600,
+    "date": "2026-11-09",
+    "desc": "Arazi gidiş-dönüş"
+   },
+   {
+    "id": "demo000d",
+    "type": "ekipman",
+    "amount": 950,
+    "date": "2026-11-11",
+    "desc": "Çerçeve teli"
+   }
+  ],
+  "milk": [
+   {
+    "id": "demo000e",
+    "amount": 185,
+    "date": "2026-11-02",
+    "hiveCount": "3",
+    "note": "İyi hasat"
+   },
+   {
+    "id": "demo000f",
+    "amount": 210,
+    "date": "2026-11-05",
+    "hiveCount": "3",
+    "note": ""
+   },
+   {
+    "id": "demo000g",
+    "amount": 195,
+    "date": "2026-11-08",
+    "hiveCount": "3",
+    "note": "Hava güzeldi"
+   },
+   {
+    "id": "demo000h",
+    "amount": 230,
+    "date": "2026-11-11",
+    "hiveCount": "4",
+    "note": "En iyi hasat"
+   }
+  ],
+  "queens": [
+   {
+    "id": "demo000i",
+    "name": "2026-Seri-1",
+    "transfer": "2026-11-06",
+    "grafted": 24,
+    "accepted": 19,
+    "sold": 10,
+    "status": "active",
+    "notes": "Kafkas ana arı üretimi"
+   },
+   {
+    "id": "demo000j",
+    "name": "2026-Seri-0",
+    "transfer": "2026-10-15",
+    "grafted": 20,
+    "accepted": 16,
+    "sold": 16,
+    "status": "completed",
+    "notes": "Tamamlandı"
+   }
+  ],
+  "tasks": [
+   {
+    "id": "demo000k",
+    "text": "3 numaralı kovana ana arı koy",
+    "done": false
+   },
+   {
+    "id": "demo000l",
+    "text": "Varroa kontrolü yap",
+    "done": true
+   },
+   {
+    "id": "demo000m",
+    "text": "Şeker suyu hazırla",
+    "done": false
+   }
+  ],
+  "seasons": [],
+  "stock": [
+   {
+    "id": "demo000n",
+    "product": "suzme_bal",
+    "action": "in",
+    "amount": 60,
+    "unit": "kg",
+    "date": "2026-11-01",
+    "note": "İlkbahar hasatı"
+   },
+   {
+    "id": "demo000o",
+    "product": "suzme_bal",
+    "action": "out",
+    "amount": 15,
+    "unit": "kg",
+    "date": "2026-11-05",
+    "note": "Satış: Ahmet Bey"
+   },
+   {
+    "id": "demo000p",
+    "product": "suzme_bal",
+    "action": "out",
+    "amount": 30,
+    "unit": "kg",
+    "date": "2026-11-10",
+    "note": "Satış: Market"
+   },
+   {
+    "id": "demo000q",
+    "product": "ari_sutu",
+    "action": "in",
+    "amount": 820,
+    "unit": "gr",
+    "date": "2026-11-02",
+    "note": "Toplam hasat"
+   },
+   {
+    "id": "demo000r",
+    "product": "ari_sutu",
+    "action": "out",
+    "amount": 200,
+    "unit": "gr",
+    "date": "2026-11-08",
+    "note": "Satış: Eczane"
+   },
+   {
+    "id": "demo000s",
+    "product": "karakovan_bal",
+    "action": "in",
+    "amount": 12,
+    "unit": "kg",
+    "date": "2026-11-01",
+    "note": "Karakovan hasatı"
+   }
+  ],
+  "inventory": [],
+  "deleted": [],
+  "_demo": true
+ },
+ "settings": {
+  "city": "Muğla",
+  "userName": "Demo",
+  "activeSeason": null
+ }
+}
