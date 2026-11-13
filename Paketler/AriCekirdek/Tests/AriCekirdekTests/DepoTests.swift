@@ -89,4 +89,29 @@ final class DepoTests: XCTestCase {
         XCTAssertEqual(d.veri.sezonlar[0].name, "2026 Sezonu")
         XCTAssertEqual(d.ayarlar.activeSeason, d.veri.sezonlar[0].id)
     }
+
+    // Final review #1: otomatik sezon web kullanıcısının ayarlarını ezmemeli
+    func test_otomatikSezonUzakAyarlariEzmez() {
+        var d = DepoDurumu()
+        d.sezonYoksaOlustur(buYil: 2026, simdi: 9_999)
+        let uzakAyar = Ayarlar(ham: ["_up": .tam(5), "city": .metin("Aydın"), "stockPrices": .nesne(["suzme_bal": .tam(350)])])
+        let uzakVeri = BBVeri(ham: ["seasons": .dizi([.nesne(["id": .metin("s2026"), "name": .metin("Web Sezonu"), "start": .metin("2026-03-01"), "_up": .tam(5)])])])
+        d.uzakIleBirlestir(uzakVeri, uzakAyar)
+        XCTAssertEqual(d.ayarlar.city, "Aydın")
+        XCTAssertEqual(d.ayarlar.stockPrices["suzme_bal"], 350)
+        XCTAssertEqual(d.veri.sezonlar.count, 1)
+        XCTAssertEqual(d.veri.sezonlar.first?.name, "Web Sezonu")
+    }
+
+    // Final review #2: gönderim sürerken yapılan değişiklik bekleyen kalmalı
+    func test_gonderimSirasindaDegisiklikBekler() {
+        var d = DepoDurumu()
+        kovanEkle(&d, "h1", "1", simdi: 100)
+        let gonderilen = d.degisiklikSayaci
+        kovanEkle(&d, "h2", "2", simdi: 200)       // upsert sürerken
+        d.gonderildi(sayac: gonderilen)
+        XCTAssertTrue(d.bekleyen)
+        d.gonderildi(sayac: d.degisiklikSayaci)
+        XCTAssertFalse(d.bekleyen)
+    }
 }
