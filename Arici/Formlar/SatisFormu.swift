@@ -123,7 +123,8 @@ struct SatisFormu: View {
             musteri = s.customer ?? ""; telefon = s.phone ?? ""; tarih = isoTarih(s.date) ?? Date()
             odeme = s.payment ?? "paid"; odenen = s.paidAmount.map { String($0) } ?? ""
             onSiparis = s.orderStatus == "preorder"; not = s.note ?? ""
-            let uid = satisStokUrunu(s) ?? (s.type ?? "other")
+            // Stok ürünü olmayan eski satış (arı/ana arı/diğer): türü korunur, product yazılmaz
+            let uid = satisStokUrunu(s) ?? "tur:" + (s.type ?? "other")
             let qty = s.qty ?? 0, fiyat = s.price ?? 0
             let elle = abs((s.total ?? 0) - qty * fiyat) > 0.009 && (s.total ?? 0) > 0 ? s.total : nil
             kalemler = [SatisKalemi(urunId: uid, birim: Birim(rawValue: s.unit ?? "") ?? .kg, miktar: qty, fiyat: fiyat, toplamElle: elle)]
@@ -133,7 +134,9 @@ struct SatisFormu: View {
     }
 
     /// Ürün → web satış türü (bal ürünleri honey + honeyType, arı sütü milk, ana arı queen, diğerleri other).
-    private func tur(_ urunId: String) -> (String, String?) {
+    private func tur(_ urunId: String, onceki: Satis?) -> (String, String?) {
+        // Düzenlenen satış bal türündeyse özel bal ürünü de honey + honeyType olarak kalır
+        if onceki?.type == "honey", urunId != "ari_sutu", urunId != "ana_ari" { return ("honey", urunId) }
         switch urunId {
         case "suzme_bal", "petek_bal", "karakovan_bal": return ("honey", urunId)
         case "ari_sutu": return ("milk", nil)
@@ -153,10 +156,14 @@ struct SatisFormu: View {
                 let i = satisId.flatMap { id in l.firstIndex { $0.id == id } }
                 let onceki = i.map { l[$0] }
                 var s = onceki ?? Satis(["id": .metin(yeniKimlik())])
-                let (t, honey) = tur(k.urunId)
-                s.type = t
-                s.honeyType = honey
-                s.product = k.urunId
+                if k.urunId.hasPrefix("tur:") {
+                    s.type = String(k.urunId.dropFirst(4))   // stok ürünü değil: tür korunur, product yazılmaz
+                } else {
+                    let (t, honey) = tur(k.urunId, onceki: onceki)
+                    s.type = t
+                    s.honeyType = honey
+                    s.product = k.urunId
+                }
                 s.customer = musteriAd
                 s.phone = telefon.isEmpty ? nil : telefon
                 s.date = bugunISO(tarih)

@@ -23,6 +23,7 @@ struct UrunFormu: View {
     @State private var silOnay = false
     @State private var yuklendi = false
     @State private var kaydediliyor = false
+    @State private var yuklemeHatasi: String?
 
     private var hesapli: Bool { oturum.kullaniciId != nil }
     private var hazirUrun: Bool { urunId.map { id in hazirUrunler.contains { $0.v == id } } ?? false }
@@ -84,7 +85,7 @@ struct UrunFormu: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
                 ToolbarItem(placement: .confirmationAction) {
                     if kaydediliyor { ProgressView() } else {
-                        Button(urunId == nil ? "Ekle" : "Kaydet") { Task { await kaydet(); kapat() } }
+                        Button(urunId == nil ? "Ekle" : "Kaydet") { Task { if await kaydet() { kapat() } } }
                             .disabled(ad.trimmingCharacters(in: .whitespaces).isEmpty || (urunId == nil && !urunEklenebilir(depo.ayarlar)))
                     }
                 }
@@ -92,6 +93,9 @@ struct UrunFormu: View {
             .confirmationDialog("Ürün silinsin mi?", isPresented: $silOnay, titleVisibility: .visible) {
                 Button("Sil", role: .destructive) { Task { await sil(); kapat() } }
             } message: { Text("Stok ve satış kayıtları silinmez; ürün listeden kalkar.") }
+            .alert("Fotoğraf yüklenemedi", isPresented: Binding(get: { yuklemeHatasi != nil }, set: { if !$0 { yuklemeHatasi = nil; kapat() } })) {
+                Button("Tamam", role: .cancel) {}
+            } message: { Text("Ürün fotoğrafsız kaydedildi. İnterneti kontrol edip ürünü düzenleyerek tekrar deneyebilirsin. (\(yuklemeHatasi ?? ""))") }
             .sheet(isPresented: $kamera) { KameraSecici { foto = $0; hazir = nil }.ignoresSafeArea() }
             .onChange(of: fotoSecim) { _, s in
                 Task { if let d = try? await s?.loadTransferable(type: Data.self), let i = UIImage(data: d) { foto = i; hazir = nil } }
@@ -123,15 +127,23 @@ struct UrunFormu: View {
         if let i = u.image, i.hasPrefix("hazir:") { hazir = String(i.dropFirst(6)) }
     }
 
-    private func kaydet() async {
+    /// Kaydeder. Fotoğraf yüklenemezse ürün yine kaydedilir, hata gösterilir (false: sayfa uyarıdan sonra kapanır).
+    private func kaydet() async -> Bool {
         kaydediliyor = true
         defer { kaydediliyor = false }
         let mevcutListe = depo.urunler
         let id = urunId ?? urunKimligi(ad: ad, mevcut: mevcutListe.map(\.v))
+        let eskiGorsel = mevcutListe.first { $0.v == id }?.image
         var gorselAlani: String? = hazir.map { "hazir:\($0)" }
+        var hata: String?
         if let foto, let uid = oturum.kullaniciId, let veri = UrunGorselDeposu.hazirla(foto) {
-            gorselAlani = try? await UrunGorselDeposu.paylasilan.yukle(veri, kullanici: uid, urunId: id)
+            do {
+                gorselAlani = try await UrunGorselDeposu.paylasilan.yukle(veri, kullanici: uid, urunId: id)
+            } catch {
+                hata = error.localizedDescription
+            }
         }
+        if let g = gorselAlani, let e = eskiGorsel, e != g, !e.hasPrefix("hazir:") { await UrunGorselDeposu.paylasilan.sil(e) }
         depo.ayarDegistir { a in
             var l = urunListesi(a)
             var u = l.first { $0.v == id } ?? UrunTanimi(["v": .metin(id)])
@@ -152,6 +164,8 @@ struct UrunFormu: View {
                 v.stokKayitlari = v.stokKayitlari + [k]
             }
         }
+        if let hata { yuklemeHatasi = hata; return false }
+        return true
     }
 
     private func sil() async {

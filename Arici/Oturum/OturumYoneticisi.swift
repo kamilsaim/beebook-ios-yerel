@@ -29,6 +29,8 @@ final class OturumYoneticisi {
     @ObservationIgnored private var dinleniyor = false
     /// Oturum kapanınca (çıkış/silme) çağrılır — veri ve widget temizliği.
     @ObservationIgnored var cikistaTemizle: (() -> Void)?
+    /// Çıkıştan önce bekleyen değişiklikleri gönder (gönderilmemiş veri silinmesin).
+    @ObservationIgnored var cikmadanOnce: (() async -> Void)?
 
     var kullaniciId: String? { kullanici?.id.uuidString.lowercased() }
 
@@ -148,6 +150,7 @@ final class OturumYoneticisi {
     // MARK: Çıkış ve hesap silme
 
     func cikis() async {
+        await cikmadanOnce?()
         cikistaTemizle?()
         try? await supabase.auth.signOut()
     }

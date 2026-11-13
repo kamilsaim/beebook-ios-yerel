@@ -31,8 +31,9 @@ actor UrunGorselDeposu {
         return veri
     }
 
+    /// Anahtar ASCII olmalı (Türkçe ürün id'leri Storage'da geçersiz anahtar olabilir): uid/<rastgele>.jpg
     func yukle(_ veri: Data, kullanici: String, urunId: String) async throws -> String {
-        let yol = "\(kullanici)/\(urunId).jpg"
+        let yol = "\(kullanici)/\(UUID().uuidString.lowercased()).jpg"
         try await supabase.storage.from(Sabitler.urunBucket)
             .upload(yol, data: veri, options: FileOptions(contentType: "image/jpeg", upsert: true))
         try? veri.write(to: dosya(yol))

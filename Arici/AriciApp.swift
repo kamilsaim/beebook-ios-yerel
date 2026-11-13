@@ -16,9 +16,11 @@ struct AriciApp: App {
                 .environment(depo)
                 .task {
                     oturum.cikistaTemizle = { [depo] in depo.temizle() }
+                    oturum.cikmadanOnce = { [depo] in await depo.simdiGonder() }
                     await oturum.baslat()
                 }
                 .onChange(of: oturum.kullaniciId) { _, yeni in depo.kullaniciId = yeni }
+                .onChange(of: oturum.durum) { _, d in depo.hesapsiz = d == .hesapsiz }
                 .onOpenURL { url in
                     if !GIDSignIn.sharedInstance.handle(url) { supabase.auth.handle(url) }
                 }

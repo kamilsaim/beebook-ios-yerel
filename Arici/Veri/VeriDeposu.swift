@@ -14,6 +14,15 @@ final class VeriDeposu {
     var kullaniciId: String? { didSet { if kullaniciId != oldValue { Task { await yukle() } } } }
     /// Simülatör/inceleme örnek verisi — asla gönderilmez.
     private(set) var ornekKipi = false
+    /// Hesapsız kullanım: eşitleme yok; ilk sezon yerelde oluşturulur.
+    var hesapsiz = false {
+        didSet {
+            guard hesapsiz, !ornekKipi else { return }
+            durum.sezonYoksaOlustur(buYil: Calendar.current.component(.year, from: Date()), simdi: Self.simdiMs)
+            Onbellek.yaz(durum)
+        }
+    }
+    @ObservationIgnored private var tekrarGerekli = false
 
     @ObservationIgnored private var gonderimGorevi: Task<Void, Never>?
 
@@ -88,10 +97,9 @@ final class VeriDeposu {
     func yukle() async { await esitle(zorlaGonder: false) }
 
     private func esitle(zorlaGonder: Bool = true) async {
-        guard !ornekKipi, let uid = kullaniciId, !esitleniyor else {
-            if !ornekKipi { durum.sezonYoksaOlustur(buYil: Calendar.current.component(.year, from: Date()), simdi: Self.simdiMs) }
-            return
-        }
+        guard !ornekKipi, let uid = kullaniciId else { return }
+        // Gönderim sürüyorsa bırakma: bitince yeniden dene (değişiklik kaybolmasın).
+        guard !esitleniyor else { tekrarGerekli = true; return }
         esitleniyor = true
         defer { esitleniyor = false }
         do {
@@ -106,16 +114,20 @@ final class VeriDeposu {
             Onbellek.yaz(durum)
             if durum.bekleyen || (zorlaGonder && !uzakVeriVar) {
                 let simdi = ISO8601DateFormatter().string(from: Date())
-                try await supabase.from("user_data")
-                    .upsert(Yazim(user_id: uid, data: durum.veri, settings: durum.ayarlar, updated_at: simdi), onConflict: "user_id")
-                    .execute()
-                durum.gonderildi()
+                let sayac = durum.degisiklikSayaci
+                let yazim = Yazim(user_id: uid, data: durum.veri, settings: durum.ayarlar, updated_at: simdi)
+                try await supabase.from("user_data").upsert(yazim, onConflict: "user_id").execute()
+                durum.gonderildi(sayac: sayac)
                 Onbellek.yaz(durum)
             }
             sonHata = nil
         } catch is CancellationError {
         } catch {
             sonHata = error.localizedDescription
+        }
+        if tekrarGerekli {
+            tekrarGerekli = false
+            if durum.bekleyen { Task { await esitle() } }
         }
     }
 
