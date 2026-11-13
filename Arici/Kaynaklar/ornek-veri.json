@@ -1,0 +1,825 @@
+{
+ "data": {
+  "hives": [
+   {
+    "id": "h1",
+    "num": "1",
+    "type": "Langstroth",
+    "queenStatus": "yes",
+    "queenColor": "blue",
+    "strength": "4",
+    "race": "Karniyol",
+    "generation": "F1",
+    "year": "2025",
+    "frames": "6",
+    "floors": 2,
+    "notes": "",
+    "createdAt": "2025-04-03",
+    "_up": 1
+   },
+   {
+    "id": "h2",
+    "num": "2",
+    "type": "Langstroth",
+    "queenStatus": "yes",
+    "queenColor": "blue",
+    "strength": "5",
+    "race": "Kafkas",
+    "generation": "F1",
+    "year": "2025",
+    "frames": "8",
+    "floors": 1,
+    "notes": "",
+    "createdAt": "2025-04-03",
+    "_up": 1
+   },
+   {
+    "id": "h3",
+    "num": "3",
+    "type": "Dadant",
+    "queenStatus": "yes",
+    "queenColor": "green",
+    "strength": "5",
+    "race": "Buckfast",
+    "generation": "F1",
+    "year": "2024",
+    "frames": "10",
+    "floors": 3,
+    "notes": "",
+    "createdAt": "2025-04-03",
+    "_up": 1
+   },
+   {
+    "id": "h4",
+    "num": "4",
+    "type": "Langstroth",
+    "queenStatus": "yes",
+    "queenColor": "blue",
+    "strength": "5",
+    "race": "Anadolu",
+    "generation": "F1",
+    "year": "2025",
+    "frames": "10",
+    "floors": 3,
+    "notes": "",
+    "createdAt": "2025-04-03",
+    "_up": 1
+   },
+   {
+    "id": "h5",
+    "num": "5",
+    "type": "Yerli",
+    "queenStatus": "no",
+    "queenColor": "white",
+    "strength": "2",
+    "race": "Karniyol",
+    "generation": "F1",
+    "year": "",
+    "frames": "8",
+    "floors": 1,
+    "notes": "",
+    "createdAt": "2025-04-03",
+    "_up": 1
+   },
+   {
+    "id": "h6",
+    "num": "6",
+    "type": "Langstroth",
+    "queenStatus": "yes",
+    "queenColor": "white",
+    "strength": "4",
+    "race": "Kafkas",
+    "generation": "F2",
+    "year": "2026",
+    "frames": "8",
+    "floors": 2,
+    "notes": "",
+    "createdAt": "2025-04-03",
+    "_up": 1
+   },
+   {
+    "id": "h7",
+    "num": "7",
+    "type": "Dadant",
+    "queenStatus": "bakire",
+    "queenColor": "white",
+    "strength": "3",
+    "race": "Buckfast",
+    "generation": "F1",
+    "year": "2026",
+    "frames": "6",
+    "floors": 2,
+    "notes": "",
+    "createdAt": "2025-04-03",
+    "_up": 1
+   },
+   {
+    "id": "h8",
+    "num": "8",
+    "type": "Nükleus/Ruşet",
+    "queenStatus": "yes",
+    "queenColor": "blue",
+    "strength": "3",
+    "race": "Anadolu",
+    "generation": "",
+    "year": "2025",
+    "frames": "8",
+    "floors": 1,
+    "notes": "",
+    "createdAt": "2025-04-03",
+    "_up": 1
+   },
+   {
+    "id": "h9",
+    "num": "9",
+    "type": "Langstroth",
+    "queenStatus": "yes",
+    "queenColor": "green",
+    "strength": "3",
+    "race": "Karniyol",
+    "generation": "",
+    "year": "2024",
+    "frames": "8",
+    "floors": 4,
+    "notes": "",
+    "createdAt": "2025-04-03",
+    "_up": 1
+   },
+   {
+    "id": "h10",
+    "num": "10",
+    "type": "Ana Arı Kovanı",
+    "queenStatus": "meme",
+    "queenColor": "white",
+    "strength": "5",
+    "race": "Kafkas",
+    "generation": "",
+    "year": "",
+    "frames": "6",
+    "floors": 1,
+    "notes": "",
+    "createdAt": "2025-04-03",
+    "_up": 1
+   },
+   {
+    "id": "h11",
+    "num": "11",
+    "type": "Langstroth",
+    "queenStatus": "yes",
+    "queenColor": "blue",
+    "strength": "3",
+    "race": "Buckfast",
+    "generation": "F1",
+    "year": "2025",
+    "frames": "8",
+    "floors": 2,
+    "notes": "",
+    "createdAt": "2025-04-03",
+    "_up": 1
+   },
+   {
+    "id": "h12",
+    "num": "12",
+    "type": "Langstroth",
+    "queenStatus": "yes",
+    "queenColor": "red",
+    "strength": "5",
+    "race": "Anadolu",
+    "generation": "F1",
+    "year": "2023",
+    "frames": "10",
+    "floors": 1,
+    "notes": "",
+    "createdAt": "2025-04-03",
+    "_up": 1
+   }
+  ],
+  "sales": [
+   {
+    "id": "s1",
+    "type": "honey",
+    "product": "suzme_bal",
+    "customer": "Ahmet Yılmaz",
+    "date": "2026-11-11",
+    "qty": 15,
+    "unit": "kg",
+    "price": 350,
+    "total": 5250,
+    "payment": "paid",
+    "orderStatus": "delivered",
+    "_up": 1,
+    "honeyType": "suzme_bal",
+    "phone": "05551112233"
+   },
+   {
+    "id": "s2",
+    "type": "other",
+    "product": "bal_sirkesi",
+    "customer": "Ayşe Demir",
+    "date": "2026-11-13",
+    "qty": 3,
+    "unit": "lt",
+    "price": 150,
+    "total": 450,
+    "payment": "partial",
+    "orderStatus": "delivered",
+    "_up": 1,
+    "paidAmount": 150,
+    "batchId": "b1",
+    "phone": "05552223344"
+   },
+   {
+    "id": "s3",
+    "type": "honey",
+    "product": "suzme_bal",
+    "customer": "Ayşe Demir",
+    "date": "2026-11-13",
+    "qty": 1,
+    "unit": "kg",
+    "price": 350,
+    "total": 350,
+    "payment": "partial",
+    "orderStatus": "delivered",
+    "_up": 1,
+    "honeyType": "suzme_bal",
+    "paidAmount": 0,
+    "batchId": "b1",
+    "phone": "05552223344"
+   },
+   {
+    "id": "s4",
+    "type": "other",
+    "product": "propolis",
+    "customer": "Şifa Eczanesi",
+    "date": "2026-11-09",
+    "qty": 0.5,
+    "unit": "lt",
+    "price": 4800,
+    "total": 2400.0,
+    "payment": "pending",
+    "orderStatus": "delivered",
+    "_up": 1
+   },
+   {
+    "id": "s5",
+    "type": "queen",
+    "product": "ana_ari",
+    "customer": "Mustafa Usta",
+    "date": "2026-11-12",
+    "qty": 5,
+    "unit": "adet",
+    "price": 800,
+    "total": 4000,
+    "payment": "pending",
+    "orderStatus": "preorder",
+    "_up": 1,
+    "phone": "05553334455"
+   },
+   {
+    "id": "s6",
+    "type": "honey",
+    "product": "petek_bal",
+    "customer": "Komşu Mehmet",
+    "date": "2026-11-08",
+    "qty": 2,
+    "unit": "kg",
+    "price": 0,
+    "total": 0,
+    "payment": "hediye",
+    "orderStatus": "delivered",
+    "_up": 1,
+    "honeyType": "petek_bal"
+   }
+  ],
+  "stock": [
+   {
+    "id": "k1",
+    "product": "suzme_bal",
+    "action": "in",
+    "amount": 200,
+    "unit": "kg",
+    "date": "2026-08-20",
+    "note": "Yaz hasadı",
+    "_up": 1
+   },
+   {
+    "id": "k2",
+    "product": "petek_bal",
+    "action": "in",
+    "amount": 42,
+    "unit": "kg",
+    "date": "2026-08-20",
+    "note": "Yaz hasadı",
+    "_up": 1
+   },
+   {
+    "id": "k3",
+    "product": "bal_sirkesi",
+    "action": "in",
+    "amount": 24,
+    "unit": "lt",
+    "date": "2026-09-15",
+    "note": "",
+    "_up": 1
+   },
+   {
+    "id": "k4",
+    "product": "propolis",
+    "action": "in",
+    "amount": 2,
+    "unit": "lt",
+    "date": "2026-09-20",
+    "note": "",
+    "_up": 1
+   },
+   {
+    "id": "k5",
+    "product": "ari_sutu",
+    "action": "in",
+    "amount": 620,
+    "unit": "gr",
+    "date": "2026-06-10",
+    "note": "Hasat",
+    "milkId": "m1",
+    "_up": 1
+   },
+   {
+    "id": "k6",
+    "product": "polen",
+    "action": "in",
+    "amount": 12,
+    "unit": "kg",
+    "date": "2026-07-01",
+    "note": "",
+    "_up": 1
+   },
+   {
+    "id": "k7",
+    "product": "ana_ari",
+    "action": "in",
+    "amount": 14,
+    "unit": "adet",
+    "date": "2026-11-01",
+    "note": "Seri A-26",
+    "_up": 1
+   },
+   {
+    "id": "os1",
+    "product": "suzme_bal",
+    "action": "out",
+    "amount": 15,
+    "unit": "kg",
+    "date": "2026-11-11",
+    "note": "Satış: Ahmet Yılmaz",
+    "saleId": "s1",
+    "_up": 1
+   },
+   {
+    "id": "os2",
+    "product": "bal_sirkesi",
+    "action": "out",
+    "amount": 3,
+    "unit": "lt",
+    "date": "2026-11-13",
+    "note": "Satış: Ayşe Demir",
+    "saleId": "s2",
+    "_up": 1
+   },
+   {
+    "id": "os3",
+    "product": "suzme_bal",
+    "action": "out",
+    "amount": 1,
+    "unit": "kg",
+    "date": "2026-11-13",
+    "note": "Satış: Ayşe Demir",
+    "saleId": "s3",
+    "_up": 1
+   },
+   {
+    "id": "os4",
+    "product": "propolis",
+    "action": "out",
+    "amount": 0.5,
+    "unit": "lt",
+    "date": "2026-11-09",
+    "note": "Satış: Şifa Eczanesi",
+    "saleId": "s4",
+    "_up": 1
+   },
+   {
+    "id": "os5",
+    "product": "ana_ari",
+    "action": "out",
+    "amount": 5,
+    "unit": "adet",
+    "date": "2026-11-12",
+    "note": "Satış: Mustafa Usta",
+    "saleId": "s5",
+    "_up": 1
+   },
+   {
+    "id": "os6",
+    "product": "petek_bal",
+    "action": "out",
+    "amount": 2,
+    "unit": "kg",
+    "date": "2026-11-08",
+    "note": "Hediye: Komşu Mehmet",
+    "saleId": "s6",
+    "_up": 1
+   }
+  ],
+  "expenses": [
+   {
+    "id": "e1",
+    "type": "feed",
+    "amount": 6500,
+    "date": "2026-10-02",
+    "desc": "Şurup şekeri",
+    "payment": "paid",
+    "_up": 1
+   },
+   {
+    "id": "e2",
+    "type": "medicine",
+    "amount": 1800,
+    "date": "2026-09-12",
+    "desc": "Varroa şeridi",
+    "payment": "pending",
+    "_up": 1
+   }
+  ],
+  "milk": [
+   {
+    "id": "m1",
+    "amount": 620,
+    "date": "2026-06-10",
+    "hiveCount": 8,
+    "note": "",
+    "_up": 1
+   }
+  ],
+  "queens": [
+   {
+    "id": "q1",
+    "name": "Seri A-26",
+    "race": "Karniyol",
+    "generation": "F1",
+    "motherHive": "h1",
+    "starterHive": "h4",
+    "transfer": "2026-11-04",
+    "grafted": 30,
+    "accepted": 20,
+    "emerged": 0,
+    "sold": 0,
+    "status": "active",
+    "notes": "",
+    "queens": [
+     {
+      "id": "mm0",
+      "num": "1",
+      "status": "kovana_aktarildi",
+      "targetHive": ""
+     },
+     {
+      "id": "mm1",
+      "num": "2",
+      "status": "kovana_aktarildi",
+      "targetHive": ""
+     },
+     {
+      "id": "mm2",
+      "num": "3",
+      "status": "kovana_aktarildi",
+      "targetHive": ""
+     },
+     {
+      "id": "mm3",
+      "num": "4",
+      "status": "kovana_aktarildi",
+      "targetHive": ""
+     },
+     {
+      "id": "mm4",
+      "num": "5",
+      "status": "kovana_aktarildi",
+      "targetHive": ""
+     },
+     {
+      "id": "mm5",
+      "num": "6",
+      "status": "kovana_aktarildi",
+      "targetHive": ""
+     },
+     {
+      "id": "mm6",
+      "num": "7",
+      "status": "kovana_aktarildi",
+      "targetHive": ""
+     },
+     {
+      "id": "mm7",
+      "num": "8",
+      "status": "kovana_aktarildi",
+      "targetHive": ""
+     },
+     {
+      "id": "mm8",
+      "num": "9",
+      "status": "kovana_aktarildi",
+      "targetHive": ""
+     },
+     {
+      "id": "mm9",
+      "num": "10",
+      "status": "satildi",
+      "targetHive": ""
+     },
+     {
+      "id": "mm10",
+      "num": "11",
+      "status": "satildi",
+      "targetHive": ""
+     },
+     {
+      "id": "mm11",
+      "num": "12",
+      "status": "satildi",
+      "targetHive": ""
+     },
+     {
+      "id": "mm12",
+      "num": "13",
+      "status": "satildi",
+      "targetHive": ""
+     },
+     {
+      "id": "mm13",
+      "num": "14",
+      "status": "pending",
+      "targetHive": ""
+     },
+     {
+      "id": "mm14",
+      "num": "15",
+      "status": "pending",
+      "targetHive": ""
+     },
+     {
+      "id": "mm15",
+      "num": "16",
+      "status": "pending",
+      "targetHive": ""
+     },
+     {
+      "id": "mm16",
+      "num": "17",
+      "status": "pending",
+      "targetHive": ""
+     },
+     {
+      "id": "mm17",
+      "num": "18",
+      "status": "pending",
+      "targetHive": ""
+     },
+     {
+      "id": "mm18",
+      "num": "19",
+      "status": "pending",
+      "targetHive": ""
+     },
+     {
+      "id": "mm19",
+      "num": "20",
+      "status": "oldu",
+      "targetHive": ""
+     }
+    ],
+    "_up": 1
+   }
+  ],
+  "tasks": [
+   {
+    "id": "t1",
+    "text": "Şurup ver (1 lt)",
+    "done": true,
+    "dueDate": "2026-11-13",
+    "scope": "5-11",
+    "hiveIds": [
+     "h5",
+     "h6",
+     "h7",
+     "h8",
+     "h9",
+     "h10",
+     "h11"
+    ],
+    "_up": 1
+   },
+   {
+    "id": "t2",
+    "text": "Varroa şeridi tak",
+    "done": false,
+    "dueDate": "2026-11-13",
+    "scope": "Tüm Langstroth",
+    "hiveIds": [
+     "h1",
+     "h2",
+     "h4",
+     "h6",
+     "h9",
+     "h11",
+     "h12"
+    ],
+    "_up": 1
+   },
+   {
+    "id": "t3",
+    "text": "Seri A-26 meme dağıtımı",
+    "done": false,
+    "dueDate": "2026-11-14",
+    "_up": 1
+   },
+   {
+    "id": "t4",
+    "text": "Kışlık kontrol",
+    "done": false,
+    "dueDate": "2026-11-16",
+    "_up": 1
+   }
+  ],
+  "seasons": [
+   {
+    "id": "s2026",
+    "year": 2026,
+    "name": "2026 Sezonu",
+    "active": true,
+    "start": "2026-01-01",
+    "_up": 1
+   }
+  ],
+  "inventory": [
+   {
+    "id": "i1",
+    "name": "Ballık",
+    "qty": 24,
+    "status": "saglam",
+    "note": "",
+    "_up": 1
+   },
+   {
+    "id": "i2",
+    "name": "Körük",
+    "qty": 2,
+    "status": "tamir",
+    "note": "",
+    "_up": 1
+   }
+  ],
+  "inspections": [
+   {
+    "id": "n1",
+    "hiveId": "h1",
+    "date": "2026-11-12",
+    "queenSeen": true,
+    "eggs": true,
+    "brood": "duzenli",
+    "strength": "5",
+    "feeding": "1 lt şurup",
+    "note": "",
+    "_up": 1
+   },
+   {
+    "id": "n2",
+    "hiveId": "h5",
+    "date": "2026-11-10",
+    "queenSeen": false,
+    "eggs": false,
+    "brood": "yok",
+    "strength": "2",
+    "feeding": "",
+    "note": "Ana yok, birleştirilecek",
+    "_up": 1
+   }
+  ],
+  "araziLayout": {
+   "positions": {
+    "h1": {
+     "x": 30,
+     "y": 40
+    },
+    "h2": {
+     "x": 120,
+     "y": 40
+    },
+    "h3": {
+     "x": 210,
+     "y": 40
+    },
+    "h4": {
+     "x": 300,
+     "y": 40
+    },
+    "h5": {
+     "x": 30,
+     "y": 160
+    },
+    "h6": {
+     "x": 120,
+     "y": 160
+    },
+    "h7": {
+     "x": 210,
+     "y": 160
+    },
+    "h8": {
+     "x": 300,
+     "y": 160
+    },
+    "h9": {
+     "x": 30,
+     "y": 280
+    },
+    "h10": {
+     "x": 120,
+     "y": 280
+    },
+    "h11": {
+     "x": 210,
+     "y": 280
+    },
+    "h12": {
+     "x": 300,
+     "y": 280
+    }
+   },
+   "spacers": [],
+   "_up": 1
+  },
+  "deleted": []
+ },
+ "settings": {
+  "city": "Muğla",
+  "userName": "Örnek Arıcı",
+  "activeSeason": "s2026",
+  "hiveView": "list",
+  "stockTypes": [
+   {
+    "v": "suzme_bal",
+    "l": "🍯 Süzme Bal",
+    "unit": "kg"
+   },
+   {
+    "v": "petek_bal",
+    "l": "🍯 Petek Bal",
+    "unit": "kg"
+   },
+   {
+    "v": "ari_sutu",
+    "l": "🥛 Arı Sütü",
+    "unit": "gr"
+   },
+   {
+    "v": "karakovan_bal",
+    "l": "🫙 Karakovan Bal",
+    "unit": "kg"
+   },
+   {
+    "v": "bal_sirkesi",
+    "l": "Bal Sirkesi",
+    "unit": "lt",
+    "zakat": true
+   },
+   {
+    "v": "propolis",
+    "l": "Propolis",
+    "unit": "lt",
+    "zakat": true
+   },
+   {
+    "v": "polen",
+    "l": "Polen",
+    "unit": "kg",
+    "image": "hazir:UrunPolen"
+   },
+   {
+    "v": "ana_ari",
+    "l": "Ana Arı",
+    "unit": "adet",
+    "image": "hazir:UrunAnaari"
+   }
+  ],
+  "stockPrices": {
+   "suzme_bal": 350,
+   "petek_bal": 400,
+   "ari_sutu": 12,
+   "bal_sirkesi": 150,
+   "propolis": 4800,
+   "polen": 900,
+   "ana_ari": 800
+  },
+  "_up": 1
+ }
+}
