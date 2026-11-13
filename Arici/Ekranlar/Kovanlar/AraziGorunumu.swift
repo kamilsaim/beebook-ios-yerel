@@ -76,9 +76,9 @@ struct AraziGorunumu: View {
     }
 
     private func araLar() -> [(id: String, x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat)] {
-        (depo.veri.araziLayout?["spacers"]?.diziDegeri ?? []).compactMap { a in
+        (depo.veri.araziLayout?["spacers"]?.diziDegeri ?? []).compactMap { a -> (id: String, x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat)? in
             guard let id = a["id"]?.metinDegeri, let x = a["x"]?.sayi, let y = a["y"]?.sayi else { return nil }
-            return (id, x, y, a["w"]?.sayi ?? 40, a["h"]?.sayi ?? 20)
+            return (id, CGFloat(x), CGFloat(y), CGFloat(a["w"]?.sayi ?? 40), CGFloat(a["h"]?.sayi ?? 20))
         }
     }
 
