@@ -107,7 +107,8 @@ final class EsitlemeTests: XCTestCase {
         let snap = anlikOlustur(D(["sales": .dizi([rec("a", 5)])]))
         var d = D()
         _ = farkVeDamga(&d, onceki: snap, simdi: 999)
-        XCTAssertEqual(d.koleksiyon("deleted"), [["id": .metin("a"), "c": .metin("sales"), "ts": .tam(999)]])
+        let beklenen: Kayit = ["id": .metin("a"), "c": .metin("sales"), "ts": .tam(999)]
+        XCTAssertEqual(d.koleksiyon("deleted"), [beklenen])
     }
     // ---- ayarlar
     func test_ayarBuyukUpKazanir() {
