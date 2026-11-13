@@ -1,3 +1,4 @@
+import AriCekirdek
 import SwiftUI
 
 /// Başlatma argümanları (simülatör ekran görüntüleri): `-sekme <ad>`, `-ornekVeri`, `-ornekKaydir`.
@@ -13,6 +14,7 @@ enum Baslatma {
 }
 
 struct AnaKabuk: View {
+    @Environment(VeriDeposu.self) private var depo
     @State private var menu: MenuDurumu = {
         let m = MenuDurumu()
         m.secili = Baslatma.ilkSekme
@@ -34,14 +36,21 @@ struct AnaKabuk: View {
         }
         .environment(menu)
         .preferredColorScheme(.dark)
+        .onAppear(perform: rozetleriGuncelle)
+        .onChange(of: depo.veri) { _, _ in rozetleriGuncelle() }
+    }
+
+    private func rozetleriGuncelle() {
+        menu.rozetler[.anaAri] = depo.veri.kovanlar.filter { $0.queenStatus == "no" }.count
+        menu.rozetler[.satis] = depo.veri.satislar.filter { ($0.payment == "pending" || $0.payment == "partial") && kalan($0.ham) > 0 }.count
     }
 
     @ViewBuilder
     private func sekmeEkrani(_ s: Sekme) -> some View {
         switch s {
-        case .anaSayfa: YerTutucuEkran(baslik: "Ana Sayfa", gorsel: "ArkaManzara")
-        case .kovanlar: YerTutucuEkran(baslik: "Kovanlar", gorsel: "ArkaYesil")
-        case .anaAri: YerTutucuEkran(baslik: "Ana Arı", gorsel: "ArkaIsik")
+        case .anaSayfa: AnaSayfaEkrani()
+        case .kovanlar: KovanlarEkrani()
+        case .anaAri: AnaAriEkrani()
         case .satis: YerTutucuEkran(baslik: "Satış", gorsel: "ArkaPetek")
         case .daha: YerTutucuEkran(baslik: "Daha", gorsel: "ArkaDag")
         }

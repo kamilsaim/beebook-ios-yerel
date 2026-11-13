@@ -30,6 +30,15 @@ final class MenuDurumu {
     var secili: Sekme = .anaSayfa
     var ince = false
     var rozetler: [Sekme: Int] = [:]
+    /// Ana sayfadaki "Arazi" kısayolu: Kovanlar sekmesini arazi görünümünde aç.
+    var araziIstegi = 0
+    /// Ana sayfadaki "Satış" kısayolu: yeni satış formunu aç.
+    var yeniSatisIstegi = 0
+
+    func git(_ s: Sekme) {
+        ince = false
+        secili = s
+    }
 }
 
 /// Petek (yuvarlatılmış altıgen) — tasarım v6 SVG yolu, 60×68 görünüm kutusu.
