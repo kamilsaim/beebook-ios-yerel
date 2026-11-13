@@ -52,7 +52,7 @@ struct AnaKabuk: View {
         case .kovanlar: KovanlarEkrani()
         case .anaAri: AnaAriEkrani()
         case .satis: SatisEkrani()
-        case .daha: YerTutucuEkran(baslik: "Daha", gorsel: "ArkaDag")
+        case .daha: DahaEkrani()
         }
     }
 }

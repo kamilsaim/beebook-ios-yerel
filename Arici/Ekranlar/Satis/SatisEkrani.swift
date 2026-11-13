@@ -56,6 +56,7 @@ struct SatisEkrani: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .background(Renk.orman.ignoresSafeArea())
         .coordinateSpace(name: "kaydirma")
         .environment(\.defaultMinListRowHeight, 0)
         .overlay(alignment: .bottomTrailing) {

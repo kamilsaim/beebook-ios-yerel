@@ -295,5 +295,6 @@ struct SekmeKaydirma<Icerik: View>: View {
         }
         .coordinateSpace(name: "kaydirma")
         .scrollIndicators(.hidden)
+        .background(Renk.orman.ignoresSafeArea())
     }
 }
