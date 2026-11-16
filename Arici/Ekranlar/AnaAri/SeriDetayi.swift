@@ -9,7 +9,7 @@ struct SeriDetayi: View {
     let seriId: String
     @State private var duzenle = false
     @State private var secilenMeme: Meme?
-    @State private var kovanSecimi: Meme?
+    @State private var kovanSecimi: MemeSecimi?
     @State private var liste = false
 
     var body: some View {
@@ -47,13 +47,13 @@ struct SeriDetayi: View {
             .sheet(isPresented: $duzenle) { SeriFormu(seriId: s.id) }
             .confirmationDialog(secilenMeme.map { "Meme \(etiket(s, $0))" } ?? "", isPresented: Binding(get: { secilenMeme != nil }, set: { if !$0 { secilenMeme = nil } }), titleVisibility: .visible) {
                 if let m = secilenMeme {
-                    Button("Kovana aktarıldı…") { kovanSecimi = m; secilenMeme = nil }
+                    Button("Kovana aktarıldı…") { kovanSecimi = MemeSecimi(meme: m); secilenMeme = nil }
                     Button("Satıldı") { durumYaz(m, "satildi") }
                     Button("Bekliyor") { durumYaz(m, "pending") }
                     Button("Öldü / başarısız", role: .destructive) { durumYaz(m, "oldu") }
                 }
             }
-            .sheet(item: $kovanSecimi) { m in KovanSecici(baslik: "Meme \(etiket(s, m))", secili: m.targetHive) { kovanId in durumYaz(m, "kovana_aktarildi", kovan: kovanId) } }
+            .sheet(item: $kovanSecimi) { k in let m = k.meme; KovanSecici(baslik: "Meme \(etiket(s, m))", secili: m.targetHive) { kovanId in durumYaz(m, "kovana_aktarildi", kovan: kovanId) } }
         } else {
             BosDurum(simge: "crown", baslik: "Seri silindi").onAppear { geri() }
         }
@@ -266,7 +266,11 @@ struct SeriDetayi: View {
     }
 }
 
-extension Meme: Identifiable {}
+/// Sayfa (sheet) için kimlikli sarmalayıcı (Meme çekirdekte Identifiable değil).
+struct MemeSecimi: Identifiable {
+    let meme: Meme
+    var id: String { meme.id }
+}
 
 /// Meme aktarılacak kovanı seçme (anasız ve bakire kovanlar üstte).
 struct KovanSecici: View {
