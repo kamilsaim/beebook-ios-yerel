@@ -119,6 +119,12 @@ func isoTarih(_ s: String?) -> Date? {
 extension VeriDeposu {
     var aktifAralik: SezonAraligi? { aktifSezonAraligi(veri, aktif: ayarlar.activeSeason) }
     var urunler: [UrunTanimi] { urunListesi(ayarlar) }
+    /// Formlarda seçilebilen ürünler (pasife alınanlar hariç).
+    var aktifUrunler: [UrunTanimi] { urunler.filter { $0.pasif != true } }
+    /// Ürüne bağlı kayıt sayısı (stok hareketi + satış). Kaydı olan ürün silinmez, pasife alınır.
+    func urunKayitSayisi(_ id: String) -> Int {
+        veri.stokKayitlari.filter { $0.product == id }.count + veri.satislar.filter { satisStokUrunu($0) == id }.count
+    }
     func sezonda<T: HamKayitli>(_ k: [T]) -> [T] {
         let a = aktifAralik
         return k.filter { AriCekirdek.sezonda($0.ham["date"]?.metinDegeri, a) }

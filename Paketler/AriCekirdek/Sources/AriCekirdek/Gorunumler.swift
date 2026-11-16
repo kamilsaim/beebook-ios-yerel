@@ -167,4 +167,7 @@ public struct UrunTanimi: HamKayitli, Equatable, Sendable {
     public var unit: String { get { metin("unit") ?? "kg" } set { metinYaz("unit", newValue) } }
     public var zakat: Bool? { get { bool("zakat") } set { boolYaz("zakat", newValue) } }
     public var image: String? { get { metin("image") } set { metinYaz("image", newValue) } }
+    /// Pasif ürün (Bal Defterim kuralı): kaydı olduğu için silinemeyen, artık satılmayan ürün.
+    /// Yeni satış/stok formlarında çıkmaz; eski kayıtlar ve raporlar olduğu gibi kalır.
+    public var pasif: Bool? { get { bool("pasif") } set { boolYaz("pasif", newValue) } }
 }

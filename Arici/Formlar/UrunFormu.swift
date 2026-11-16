@@ -86,8 +86,24 @@ struct UrunFormu: View {
                     }
                     Toggle("Zekat hesabına dahil", isOn: $zekat)
                 }
-                if urunId != nil && !hazirUrun {
-                    Section { Button("Ürünü sil", role: .destructive) { silOnay = true } }
+                if let id = urunId {
+                    let n = depo.urunKayitSayisi(id)
+                    let pasif = depo.urunler.first { $0.v == id }?.pasif == true
+                    Section {
+                        if pasif {
+                            Button("Yeniden aktif et") { pasifYap(id, false); kapat() }
+                        } else if n > 0 || hazirUrun {
+                            Button("Pasife al (artık satmıyorum)", role: .destructive) { silOnay = true }
+                        } else {
+                            Button("Ürünü sil", role: .destructive) { silOnay = true }
+                        }
+                    } footer: {
+                        if pasif {
+                            Text("Bu ürün pasif: yeni satış ve stok girişinde çıkmaz. Eski kayıtları ve raporları duruyor.")
+                        } else if n > 0 {
+                            Text("Bu ürüne bağlı \(n) kayıt var, bu yüzden silinemez. Pasife alınırsa yeni satış ve stok girişinde çıkmaz; eski kayıtların ve raporların bozulmaz.")
+                        }
+                    }
                 }
                 Section {
                     Text("Fotoğraf telefonda 256×256'ya küçültülür (~25 KB) ve hesabınla eşitlenir. En fazla \(ozelUrunSiniri) ürün eklenebilir.")
@@ -106,9 +122,15 @@ struct UrunFormu: View {
                     }
                 }
             }
-            .confirmationDialog("Ürün silinsin mi?", isPresented: $silOnay, titleVisibility: .visible) {
-                Button("Sil", role: .destructive) { Task { await sil(); kapat() } }
-            } message: { Text("Stok ve satış kayıtları silinmez; ürün listeden kalkar.") }
+            .confirmationDialog(silinebilir ? "Ürün silinsin mi?" : "Ürün pasife alınsın mı?", isPresented: $silOnay, titleVisibility: .visible) {
+                if silinebilir {
+                    Button("Sil", role: .destructive) { Task { await sil(); kapat() } }
+                } else {
+                    Button("Pasife al", role: .destructive) { if let id = urunId { pasifYap(id, true) }; kapat() }
+                }
+            } message: {
+                Text(silinebilir ? "Bu ürüne ait hiç kayıt yok; listeden tamamen kalkar." : "Yeni satış ve stok girişinde çıkmaz. Stoğu bitince stok listesinden de gizlenir; eski kayıtlar ve raporlar olduğu gibi kalır.")
+            }
             .alert("Fotoğraf yüklenemedi", isPresented: Binding(get: { yuklemeHatasi != nil }, set: { if !$0 { yuklemeHatasi = nil; kapat() } })) {
                 Button("Tamam", role: .cancel) {}
             } message: { Text("Ürün fotoğrafsız kaydedildi. İnterneti kontrol edip ürünü düzenleyerek tekrar deneyebilirsin. (\(yuklemeHatasi ?? ""))") }
@@ -191,6 +213,17 @@ struct UrunFormu: View {
         }
         if let hata { yuklemeHatasi = hata; return false }
         return true
+    }
+
+    /// Kaydı olmayan, kullanıcının eklediği ürün silinebilir; diğerleri pasife alınır.
+    private var silinebilir: Bool { urunId.map { !hazirUrun && depo.urunKayitSayisi($0) == 0 } ?? false }
+
+    private func pasifYap(_ id: String, _ deger: Bool) {
+        depo.ayarDegistir { a in
+            var l = urunListesi(a)
+            if let i = l.firstIndex(where: { $0.v == id }) { l[i].pasif = deger ? true : nil }
+            a.stockTypes = l
+        }
     }
 
     private func sil() async {

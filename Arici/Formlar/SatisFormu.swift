@@ -57,7 +57,7 @@ struct SatisFormu: View {
                 }
                 ForEach($kalemler) { $k in
                     Section(kalemler.count > 1 ? "Ürün \((kalemler.firstIndex(of: k) ?? 0) + 1)" : "Ürün") {
-                        KalemDuzenleyici(kalem: $k, urunler: urunler, ucretsiz: ucretsiz)
+                        KalemDuzenleyici(kalem: $k, urunler: urunler.filter { $0.pasif != true || $0.v == k.urunId }, ucretsiz: ucretsiz)
                         if kalemler.count > 1 {
                             Button("Bu ürünü çıkar", role: .destructive) { kalemler.removeAll { $0.id == k.id } }
                         }
@@ -121,7 +121,7 @@ struct SatisFormu: View {
     }
 
     private func kalemEkle() {
-        guard let u = urunler.first else { return }
+        guard let u = depo.aktifUrunler.first ?? urunler.first else { return }
         let b = Birim(rawValue: u.unit) ?? .kg
         kalemler.append(SatisKalemi(urunId: u.v, birim: b, miktar: b == .gr || b == .ml ? 100 : 1, fiyat: depo.ayarlar.stockPrices[u.v] ?? 0))
     }

@@ -56,7 +56,8 @@ struct StokGorunumu: View {
             }
             ScrollView(.horizontal) {
                 HStack(spacing: 10) {
-                    ForEach(urunler, id: \.v) { u in
+                    // Pasif ürün: stoğu bitmişse gizlenir (Ayarlar'dan değil, ürün formundan yeniden aktif edilir).
+                    ForEach(urunler.filter { $0.pasif != true || stokSeviyesi(depo.veri, urun: $0.v) != 0 }, id: \.v) { u in
                         Button { urunForm = KimlikKutusu(id: u.v) } label: { urunKutusu(u, stokSeviyesi(depo.veri, urun: u.v)) }.buttonStyle(.plain)
                     }
                     Button { yeniUrun = true } label: {
@@ -83,8 +84,8 @@ struct StokGorunumu: View {
         let fiyat = depo.ayarlar.stockPrices[u.v] ?? 0
         let rezerve = rezerveMiktar(depo.veri, urun: u.v, urunBirimi: Birim(rawValue: u.unit))
         return VStack(spacing: 5) {
-            UrunGorseli(urun: u, boyut: 76, yaricap: 16)
-            Text(u.temizAd).font(Yazi.kucukOrta).lineLimit(1).minimumScaleFactor(0.8)
+            UrunGorseli(urun: u, boyut: 76, yaricap: 16).opacity(u.pasif == true ? 0.55 : 1)
+            Text(u.pasif == true ? "\(u.temizAd) · pasif" : u.temizAd).font(Yazi.kucukOrta).lineLimit(1).minimumScaleFactor(0.7)
             Divider().overlay(Renk.krem2)
             HStack(spacing: 4) {
                 Image(systemName: "cube.box").font(.system(size: 10)).foregroundStyle(Renk.bal)
@@ -300,7 +301,7 @@ struct StokGirisFormu: View {
         let birim = urunler.first { $0.v == urunId }?.unit ?? ""
         NavigationStack {
             Form {
-                Picker("Ürün", selection: $urunId) { ForEach(urunler, id: \.v) { Text($0.temizAd).tag($0.v) } }
+                Picker("Ürün", selection: $urunId) { ForEach(urunler.filter { $0.pasif != true || $0.v == urunId }, id: \.v) { Text($0.temizAd).tag($0.v) } }
                 HStack { TextField("Miktar", value: $miktarDeger, format: .number).keyboardType(.decimalPad); Text(birim).foregroundStyle(.secondary) }
                 DatePicker("Tarih", selection: $tarih, displayedComponents: .date)
                 HStack { Text("Birim fiyat"); TextField("₺", value: $fiyat, format: .number).keyboardType(.decimalPad).multilineTextAlignment(.trailing) }
