@@ -19,6 +19,7 @@ struct KovanlarEkrani: View {
     @State private var arama = ""
     @State private var filtre = "tumu"
     @State private var gorunum: KovanGorunum = .liste
+    @State private var oncekiGorunum: KovanGorunum = .liste
     @State private var yeniForm = false
     @State private var topluForm = false
     @State private var tarayici = false
@@ -64,18 +65,16 @@ struct KovanlarEkrani: View {
                     Segment(secenekler: [(KovanGorunum.liste, "Liste"), (.izgara, "Izgara"), (.arazi, "Arazi")], secili: $gorunum)
                         .padding(.top, 12)
                 }
-                Group {
-                    if gorunum == .arazi {
-                        AraziGorunumu { yol.append($0) }
-                    } else {
-                        liste
-                    }
-                }
+                liste
                 .padding(.horizontal, Olcu.kenar)
                 .padding(.top, 12)
             }
             .toolbar(.hidden, for: .navigationBar)
+            .klavyeKapatici()
             .navigationDestination(for: String.self) { id in KovanDetayi(kovanId: id) }
+        }
+        .fullScreenCover(isPresented: Binding(get: { gorunum == .arazi }, set: { if !$0 { gorunum = oncekiGorunum } })) {
+            AraziTamEkran()
         }
         .sheet(isPresented: $yeniForm) { KovanFormu(kovanId: nil) }
         .sheet(isPresented: $topluForm) { TopluKovanFormu() }
@@ -86,7 +85,8 @@ struct KovanlarEkrani: View {
             }
         }
         .onAppear { gorunum = depo.ayarlar.hiveView == "grid" ? .izgara : .liste }
-        .onChange(of: gorunum) { _, g in
+        .onChange(of: gorunum) { eski, g in
+            if eski != .arazi { oncekiGorunum = eski }
             if g != .arazi, depo.ayarlar.hiveView != (g == .izgara ? "grid" : "list") {
                 depo.ayarDegistir { $0.hiveView = g == .izgara ? "grid" : "list" }
             }
@@ -214,7 +214,7 @@ struct KovanSatiri: View {
                 }
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("Kovan \(kovan.num)").font(Yazi.nunito(19, .bold)).lineLimit(1)
+                    Text("Kovan \(kovan.num)").font(Yazi.logo(25)).foregroundStyle(Renk.orman).lineLimit(1)
                     Spacer(minLength: 0)
                     Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Renk.metin3)
                 }
@@ -275,12 +275,12 @@ struct KovanSatiri: View {
 
     private func bilgi(_ simge: String, _ baslik: String, _ deger: String, nokta: Bool = false) -> some View {
         HStack(alignment: .top, spacing: 5) {
-            Image(systemName: simge).font(.system(size: 12)).foregroundStyle(Renk.bal).frame(width: 15)
+            Image(systemName: simge).font(.system(size: 14)).foregroundStyle(Color(red: 0.8, green: 0.55, blue: 0.05)).frame(width: 18)
             VStack(alignment: .leading, spacing: 0) {
-                Text(baslik).font(Yazi.minik).foregroundStyle(Renk.metin3)
+                Text(baslik).font(Yazi.nunito(11, .regular)).foregroundStyle(Renk.metin2)
                 HStack(spacing: 4) {
-                    if nokta { AnaNoktasi(renk: kovan.queenColor, boyut: 7) }
-                    Text(deger).font(Yazi.kucukOrta).lineLimit(1).minimumScaleFactor(0.8)
+                    if nokta { AnaNoktasi(renk: kovan.queenColor, boyut: 8) }
+                    Text(deger).font(Yazi.nunito(14, .semibold)).foregroundStyle(Renk.metin).lineLimit(1).minimumScaleFactor(0.75)
                 }
             }
         }

@@ -266,9 +266,9 @@ private struct OfsetAnahtari: PreferenceKey {
 
 /// Kaydırma yönü → menü incelmesi. Dayanak noktası yalnız eşik aşılınca taşınır
 /// (eskiden her karede güncelleniyordu; yavaş kaydırmada kare başı fark 6 pt'yi hiç aşmadığı için menü incelmiyordu).
-struct InceltmeHesabi {
+final class InceltmeHesabi {
     private var dayanak: CGFloat = 0
-    @MainActor mutating func uygula(_ y: CGFloat, _ durum: MenuDurumu) {
+    @MainActor func uygula(_ y: CGFloat, _ durum: MenuDurumu) {
         if y < 40 {
             if durum.ince { durum.ince = false }
             dayanak = y
@@ -285,7 +285,7 @@ struct InceltmeHesabi {
 /// İçerik tarafı (iOS 17 yedeği): kaydırma içeriğine eklenir, "kaydirma" koordinat alanına göre ofset okur.
 struct InceltmeIzleyici: ViewModifier {
     let durum: MenuDurumu
-    @State private var hesap = InceltmeHesabi()
+    @State private var hesap = InceltmeHesabi() // sınıf: içi değişince görünüm yeniden çizilmez
     func body(content: Content) -> some View {
         if #available(iOS 18, *) {
             content // iOS 18+: kaydırma kabındaki .menuInceltme() izler
@@ -304,7 +304,7 @@ struct InceltmeIzleyici: ViewModifier {
 /// Kap tarafı (iOS 18+): ScrollView/List'in gerçek içerik ofsetini izler.
 struct MenuInceltme: ViewModifier {
     let durum: MenuDurumu
-    @State private var hesap = InceltmeHesabi()
+    @State private var hesap = InceltmeHesabi() // sınıf: içi değişince görünüm yeniden çizilmez
     func body(content: Content) -> some View {
         if #available(iOS 18, *) {
             content.onScrollGeometryChange(for: CGFloat.self) { g in
@@ -336,6 +336,7 @@ struct SekmeKaydirma<Icerik: View>: View {
         }
         .coordinateSpace(name: "kaydirma")
         .defaultScrollAnchor(Baslatma.var_("-alt") ? .bottom : .top)
+        .scrollDismissesKeyboard(.immediately)
         .menuInceltme(menu)
         .scrollIndicators(.hidden)
         .background(SayfaArkaplani(gorsel: arka, koyuluk: koyuluk))

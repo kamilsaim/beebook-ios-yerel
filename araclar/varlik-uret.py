@@ -120,9 +120,14 @@ def ari_katmanlari():
 
 
 def amblem():
-    # Klasöre yeni görseller eklendi: logo dosyası adıyla seçilir.
-    logo = Image.open(bul('ChatGPT*11_10_51-1.png', os.path.join(ARICILIK, 'yenilogoo'))).convert('RGBA')
-    return logo.crop((220, 75, 1035, 845))
+    # 16 Kas 2026: yeni logo yenilogoo/logo2.png (taç + kitap + "BeeBook" yazısı, şeffaf).
+    # Amblem = yazısız üst kısım (başlıktaki küçük logo; yazı yanında metinle).
+    return tam_logo().crop((77, 21, 948, 690))
+
+
+def tam_logo():
+    logo = Image.open(os.path.join(ARICILIK, 'yenilogoo', 'logo2.png')).convert('RGBA')
+    return logo.crop(logo.getchannel('A').getbbox())
 
 
 def kare_kirp(img, ust_oran=1.0):
@@ -135,11 +140,12 @@ def main():
     for ad, hx in RENKLER.items():
         renk_seti(ad, hx)
 
-    # Uygulama simgesi: koyu yeşil zemin + amblem (%78), saydamlık yok
+    # Uygulama simgesi: koyu yeşil zemin + yazılı tam logo (%84), saydamlık yok
     a = amblem()
+    tam = tam_logo()
     ikon = Image.new('RGBA', (1024, 1024), ORMAN + (255,))
-    gen = int(1024 * 0.78)
-    b = a.copy(); b.thumbnail((gen, gen), Image.LANCZOS)
+    gen = int(1024 * 0.84)
+    b = tam.copy(); b.thumbnail((gen, gen), Image.LANCZOS)
     ikon.alpha_composite(b, ((1024 - b.width) // 2, (1024 - b.height) // 2))
     klasor = os.path.join(VARLIK, 'AppIcon.appiconset')
     os.makedirs(klasor, exist_ok=True)
@@ -148,7 +154,7 @@ def main():
         'images': [{'filename': 'ikon-1024.png', 'idiom': 'universal', 'platform': 'ios', 'size': '1024x1024'}],
         'info': BILGI})
     gorsel_seti('Amblem', a, 360)
-    gorsel_seti('Acilis', a, 540, olcek='3x')
+    gorsel_seti('Acilis', tam, 600, olcek='3x')  # açılış: yazılı tam logo, 200 pt
 
     govde, kanat = ari_katmanlari()
     gorsel_seti('AriGovde', govde, 300)

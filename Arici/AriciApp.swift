@@ -58,7 +58,7 @@ struct Acilis: View {
     var body: some View {
         ZStack {
             Renk.orman.ignoresSafeArea()
-            Image("Acilis").resizable().scaledToFit().frame(width: 140)
+            Image("Acilis").resizable().scaledToFit().frame(width: 200)
         }
     }
 }

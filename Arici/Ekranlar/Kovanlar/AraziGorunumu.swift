@@ -1,11 +1,27 @@
 import AriCekirdek
 import SwiftUI
 
-/// Arazi düzeni: `araziLayout.positions` (web ile aynı piksel/nokta koordinatları). Uzun basıp sürükle → yer değiştir.
+/// Arazi düzeni, tam ekran: `araziLayout.positions` (web ile aynı koordinatlar). İki parmakla ya da +/− ile
+/// yakınlaş/uzaklaş; kovana dokun → ayrıntı; uzun basıp sürükle → yerini değiştir. Kapat → Kovanlar listesi.
+struct AraziTamEkran: View {
+    @Environment(\.dismiss) private var kapat
+    @State private var yol = NavigationPath()
+    var body: some View {
+        NavigationStack(path: $yol) {
+            AraziGorunumu(kapat: { kapat() }) { yol.append($0) }
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationDestination(for: String.self) { id in KovanDetayi(kovanId: id) }
+        }
+    }
+}
+
 struct AraziGorunumu: View {
     @Environment(VeriDeposu.self) private var depo
+    var kapat: () -> Void = {}
     let ac: (String) -> Void
     @State private var surukle: (id: String, fark: CGSize)?
+    @State private var olcek: CGFloat = 1
+    @State private var bazOlcek: CGFloat = 1
 
     private let hucre: CGFloat = 72
 
@@ -13,14 +29,14 @@ struct AraziGorunumu: View {
         let kovanlar = depo.veri.kovanlar
         let konumlar = konumlariOku()
         let yerlesmemis = kovanlar.filter { konumlar[$0.id] == nil }
-        let genislik = max(UIScreen.main.bounds.width - 2 * Olcu.kenar, (konumlar.values.map(\.x).max() ?? 0) + hucre + 40)
-        let yukseklik = max(420, (konumlar.values.map(\.y).max() ?? 0) + hucre + 80)
+        let ekran = UIScreen.main.bounds.size
+        let genislik = max(ekran.width / olcek, (konumlar.values.map(\.x).max() ?? 0) + hucre + 60)
+        let yukseklik = max(ekran.height / olcek, (konumlar.values.map(\.y).max() ?? 0) + hucre + 220)
 
-        VStack(alignment: .leading, spacing: 10) {
+        ZStack(alignment: .top) {
             ScrollView([.horizontal, .vertical]) {
                 ZStack(alignment: .topLeading) {
-                    Image("AraziZemin").resizable().scaledToFill().frame(width: genislik, height: yukseklik).clipped()
-                    Renk.ormanKoyu.opacity(0.12)
+                    Image("AraziZemin").resizable(resizingMode: .tile).frame(width: genislik, height: yukseklik)
                     ForEach(araLar(), id: \.id) { a in
                         RoundedRectangle(cornerRadius: 6).fill(Color(red: 0.55, green: 0.42, blue: 0.25).opacity(0.75))
                             .frame(width: a.w, height: a.h).offset(x: a.x, y: a.y)
@@ -29,7 +45,7 @@ struct AraziGorunumu: View {
                         let p = konumlar[k.id]!
                         let f = surukle?.id == k.id ? surukle!.fark : .zero
                         AraziKovani(kovan: k, genislik: hucre)
-                            .offset(x: p.x + f.width, y: p.y + f.height)
+                            .offset(x: p.x + f.width, y: p.y + f.height + 90)
                             .zIndex(surukle?.id == k.id ? 1 : 0)
                             .onTapGesture { ac(k.id) }
                             .gesture(
@@ -46,33 +62,82 @@ struct AraziGorunumu: View {
                     }
                 }
                 .frame(width: genislik, height: yukseklik, alignment: .topLeading)
+                .clipped()
+                .scaleEffect(olcek, anchor: .topLeading)
+                .frame(width: genislik * olcek, height: yukseklik * olcek, alignment: .topLeading)
             }
-            .frame(height: 440)
-            // İçerik çerçeveden küçük kalırsa ya da kenara kaydırılınca siyah boşluk görünmesin.
-            .background {
-                Color.clear
-                    .overlay { Image("AraziZemin").resizable().scaledToFill() }
-                    .clipped()
-            }
-            .scrollBounceBehavior(.basedOnSize, axes: [.horizontal, .vertical])
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Renk.bal.opacity(0.35), lineWidth: 1))
-            .shadow(color: .black.opacity(0.35), radius: 12, y: 8)
+            .scrollIndicators(.hidden)
+            .background(Image("AraziZemin").resizable(resizingMode: .tile).ignoresSafeArea())
+            .ignoresSafeArea()
+            .simultaneousGesture(
+                MagnifyGesture()
+                    .onChanged { v in olcek = min(3, max(0.4, bazOlcek * v.magnification)) }
+                    .onEnded { _ in bazOlcek = olcek }
+            )
 
-            HStack(spacing: 8) {
-                Rozet(metin: "Ana var", tur: .iyi); Rozet(metin: "Bakire", tur: .bilgi); Rozet(metin: "Anasız", tur: .kotu); Rozet(metin: "Ana üretim", tur: .mor)
-            }
-            Text("Kovana dokun: ayrıntı · Uzun basıp sürükle: yerini değiştir").font(Yazi.etiket).foregroundStyle(Color(white: 0.75))
+            ustCubuk
+        }
+        .safeAreaInset(edge: .bottom) { altPanel(yerlesmemis) }
+        .background(Renk.ormanKoyu)
+    }
 
+    private var ustCubuk: some View {
+        HStack(spacing: 10) {
+            Button(action: kapat) {
+                Label("Liste", systemImage: "chevron.left").font(Yazi.govdeOrta)
+                    .padding(.horizontal, 14).frame(height: 42)
+                    .background(.ultraThinMaterial, in: Capsule())
+            }
+            .accessibilityLabel("Kovan listesine dön")
+            Spacer()
+            Text("Arazi").font(Yazi.logo(24)).shadow(color: .black.opacity(0.6), radius: 4)
+            Spacer()
+            HStack(spacing: 0) {
+                Button { yakinlas(1 / 1.3) } label: { Image(systemName: "minus").frame(width: 42, height: 42) }
+                    .accessibilityLabel("Uzaklaş")
+                Divider().frame(height: 22)
+                Button { yakinlas(1.3) } label: { Image(systemName: "plus").frame(width: 42, height: 42) }
+                    .accessibilityLabel("Yakınlaş")
+            }
+            .background(.ultraThinMaterial, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.white)
+        .padding(.horizontal, Olcu.kenar)
+        .padding(.top, 4)
+    }
+
+    private func altPanel(_ yerlesmemis: [Kovan]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Rozet(metin: "Ana var", tur: .iyi); Rozet(metin: "Bakire", tur: .bilgi); Rozet(metin: "Anasız", tur: .kotu); Rozet(metin: "Meme", tur: .mor)
+                Spacer(minLength: 0)
+                Text("%\(Int((olcek * 100).rounded()))").font(Yazi.etiket).foregroundStyle(Color(white: 0.85))
+            }
+            Text("Dokun: ayrıntı · Uzun basıp sürükle: taşı · İki parmak: yakınlaş").font(Yazi.etiket).foregroundStyle(Color(white: 0.85))
             if !yerlesmemis.isEmpty {
-                Kart {
-                    KartBasligi(baslik: "Yerleştirilmemiş (\(yerlesmemis.count))", baglanti: "Hepsini yerleştir") { otomatikYerlestir(yerlesmemis) }
-                    ScrollView(.horizontal) {
-                        HStack { ForEach(yerlesmemis, id: \.id) { k in AraziKovani(kovan: k, genislik: 56).onTapGesture { ac(k.id) } } }
-                    }
+                HStack {
+                    Text("Yerleştirilmemiş (\(yerlesmemis.count))").font(Yazi.kucukOrta)
+                    Spacer()
+                    Button("Hepsini yerleştir") { otomatikYerlestir(yerlesmemis) }.font(Yazi.kucukOrta).foregroundStyle(Renk.bal)
                 }
+                ScrollView(.horizontal) {
+                    HStack { ForEach(yerlesmemis, id: \.id) { k in AraziKovani(kovan: k, genislik: 50).onTapGesture { ac(k.id) } } }
+                }
+                .scrollIndicators(.hidden)
             }
         }
+        .foregroundStyle(.white)
+        .padding(12)
+        .background(.ultraThinMaterial.opacity(0.85), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(Renk.ormanKoyu.opacity(0.5), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(.horizontal, Olcu.kenar)
+        .padding(.bottom, 6)
+    }
+
+    private func yakinlas(_ kat: CGFloat) {
+        withAnimation(.snappy) { olcek = min(3, max(0.4, olcek * kat)) }
+        bazOlcek = olcek
     }
 
     private func konumlariOku() -> [String: CGPoint] {

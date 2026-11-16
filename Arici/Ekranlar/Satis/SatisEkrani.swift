@@ -59,6 +59,7 @@ struct SatisEkrani: View {
         .background(SayfaArkaplani(gorsel: "SayfaPetek", koyuluk: 0.9))
         .coordinateSpace(name: "kaydirma")
         .menuInceltme(menu)
+        .scrollDismissesKeyboard(.immediately)
         .environment(\.defaultMinListRowHeight, 0)
         .overlay(alignment: .bottomTrailing) {
             if bolum == .satislar {

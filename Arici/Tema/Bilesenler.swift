@@ -237,6 +237,38 @@ struct SayfaArkaplani: View {
     }
 }
 
+/// Parçalı ilerleme çubuğu (ana sayfa "Yapılan işler").
+struct Ilerleme: View {
+    let oran: Double
+    var parca = 5
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<parca, id: \.self) { i in
+                Capsule().fill(Double(i) < (oran * Double(parca)).rounded() ? Renk.bal : Renk.krem2).frame(height: 5)
+            }
+        }
+        .frame(maxWidth: 80)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Form zemini: açık bal-krem bokeh (satırlar beyaz kart gibi durur).
+struct FormZemini: View {
+    var body: some View {
+        Color.clear
+            .overlay { Image("SayfaBokeh").resizable().scaledToFill() }
+            .overlay { LinearGradient(colors: [Renk.krem.opacity(0.55), Renk.krem.opacity(0.85)], startPoint: .top, endPoint: .bottom) }
+            .background(Renk.krem)
+            .clipped()
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
+    }
+}
+
+@MainActor func klavyeyiKapat() {
+    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+}
+
 /// Uygulama simgesi kutusu: koyu yeşil cam kare + altın kenar + ışıma, içinde şeffaf simge (yenilogoo simgeleri).
 struct SimgeKutusu: View {
     let ad: String
@@ -260,8 +292,22 @@ extension View {
     /// Sayfa (sheet) olarak açıldıysa sunum arka planını da ayarlar.
     func formArkaplani() -> some View {
         self.scrollContentBackground(.hidden)
-            .background(SayfaArkaplani(gorsel: "SayfaBokeh", koyuluk: 1))
-            .presentationBackground { SayfaArkaplani(gorsel: "SayfaBokeh", koyuluk: 1) }
+            .background(FormZemini())
+            .presentationBackground { FormZemini() }
             .toolbarBackground(.hidden, for: .navigationBar)
+            .environment(\.colorScheme, .light)
+            .tint(Renk.orman2)
+            .scrollDismissesKeyboard(.interactively)
+            .klavyeKapatici()
+    }
+
+    /// Klavyenin üstüne "Bitti" düğmesi (NavigationStack içinde).
+    func klavyeKapatici() -> some View {
+        toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Bitti") { klavyeyiKapat() }.font(Yazi.govdeOrta)
+            }
+        }
     }
 }

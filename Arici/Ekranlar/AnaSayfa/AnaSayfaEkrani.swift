@@ -116,6 +116,11 @@ struct OzetKartlari: View {
         let satislar = depo.sezonda(depo.veri.satislar)
         let gelir = satislar.reduce(0) { $0 + ($1.total ?? 0) }
         let bekleyen = bekleyenToplam(satislar: satislar)
+        let haftaBasi = bugunISO(Calendar(identifier: .iso8601).dateInterval(of: .weekOfYear, for: Date())?.start ?? Date())
+        let haftaIsleri = depo.veri.isler.filter { ($0.dueDate ?? "") >= haftaBasi && ($0.dueDate ?? "") <= bugunISO() }
+        let yapilan = haftaIsleri.filter(\.done).count
+        let stokDegeri = depo.urunler.reduce(0) { $0 + max(0, stokSeviyesi(depo.veri, urun: $1.v)) * (depo.ayarlar.stockPrices[$1.v] ?? 0) }
+        VStack(spacing: 10) {
         HStack(spacing: 10) {
             ozet(baslik: "Kovanlar", deger: "\(kovanlar.count)", gorsel: "UrunKovan") {
                 (Text("\(kovanlar.filter { $0.queenStatus == "yes" }.count) analı").foregroundStyle(Renk.iyi)
@@ -125,6 +130,35 @@ struct OzetKartlari: View {
                 bekleyen > 0 ? Text("\(tl(bekleyen)) bekliyor").foregroundStyle(Renk.uyari) : Text("Bekleyen yok").foregroundStyle(Renk.metin3)
             }
         }
+        HStack(spacing: 10) {
+            ozetSimgeli(baslik: "Yapılan işler", deger: "\(yapilan)/\(haftaIsleri.count)", simge: "checklist.checked") {
+                Ilerleme(oran: haftaIsleri.isEmpty ? 0 : Double(yapilan) / Double(haftaIsleri.count))
+                Text("Bu hafta").font(Yazi.minik).foregroundStyle(Renk.metin3)
+            }
+            ozetSimgeli(baslik: "Stok değeri", deger: tl(stokDegeri), simge: "shippingbox.fill") {
+                Text("\(depo.urunler.filter { stokSeviyesi(depo.veri, urun: $0.v) > 0 }.count) üründe stok").font(Yazi.minik).foregroundStyle(Renk.metin3)
+            }
+        }
+        }
+    }
+
+    private func ozetSimgeli<A: View>(baslik: String, deger: String, simge: String, @ViewBuilder alt: () -> A) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: simge).font(.system(size: 20)).foregroundStyle(Color(red: 0.8, green: 0.55, blue: 0.05))
+                .frame(width: 40, height: 40).background(Renk.bal.opacity(0.18), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(baslik).font(Yazi.etiket).foregroundStyle(Renk.metin2)
+                Text(deger).font(Yazi.nunito(19, .bold)).lineLimit(1).minimumScaleFactor(0.6)
+                alt()
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .background(Renk.krem, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: .black.opacity(0.22), radius: 9, y: 6)
+        .foregroundStyle(Renk.metin)
+        .accessibilityElement(children: .combine)
     }
 
     private func ozet(baslik: String, deger: String, gorsel: String, @ViewBuilder alt: () -> Text) -> some View {

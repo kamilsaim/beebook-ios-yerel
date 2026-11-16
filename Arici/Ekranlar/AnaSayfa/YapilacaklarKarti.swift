@@ -10,6 +10,7 @@ struct YapilacaklarKarti: View {
     @State private var formAcik = false
     @State private var tumu = false
     @State private var tamamlananlar = false
+    @AppStorage("takvimAcik") private var takvimAcik = false
 
     private static let aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
 
@@ -30,6 +31,20 @@ struct YapilacaklarKarti: View {
             if tumu {
                 tumListe(tarihli: tarihli, tarihsiz: isler.filter { ($0.dueDate ?? "").isEmpty }, bugun: bugun)
             } else {
+                Button { withAnimation(.snappy) { takvimAcik.toggle() } } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar").foregroundStyle(Renk.orman2)
+                        Text(takvimAcik ? "Takvimi gizle" : "Takvimi göster").font(Yazi.kucukOrta)
+                        Spacer()
+                        Image(systemName: "chevron.down").font(.system(size: 12, weight: .semibold))
+                            .rotationEffect(.degrees(takvimAcik ? 180 : 0))
+                    }
+                    .foregroundStyle(Renk.metin2)
+                    .padding(.vertical, 6).padding(.horizontal, 10)
+                    .background(Renk.kart, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                if takvimAcik {
                 HStack {
                     Button { ayDegistir(-1) } label: { Image(systemName: "chevron.left").frame(width: 36, height: 32) }
                         .accessibilityLabel("Önceki ay")
@@ -46,6 +61,7 @@ struct YapilacaklarKarti: View {
                     ForEach(Array(gunler.enumerated()), id: \.offset) { _, g in
                         if let g { gunHucresi(g, tarihli: tarihli, bugun: bugun) } else { Color.clear.frame(height: 40) }
                     }
+                }
                 }
                 let gunun = tarihli[secili] ?? []
                 let tarihsiz = secili == bugun ? isler.filter { ($0.dueDate ?? "").isEmpty && !$0.done } : []

@@ -2,14 +2,14 @@ import AriCekirdek
 import Charts
 import SwiftUI
 
-/// Ana sayfa "Özet ve Raporlar" (yenilogoo/anasayfa detay): sezon bal üretimi halkası,
-/// aylık bal üretimi grafiği ve koloni sağlığı halkası. "Tüm Raporlar" rapor sayfasını açar.
+/// Ana sayfa "Özet ve Raporlar" (yenilogoo/anasayfa detay): sezon tahsilat halkası,
+/// aylık satış grafiği ve koloni sağlığı halkası. "Tüm Raporlar" rapor sayfasını açar.
 struct OzetRaporKarti: View {
     @Environment(VeriDeposu.self) private var depo
     @State private var raporlar = false
 
     var body: some View {
-        let uretim = BalUretimi(depo: depo)
+        let satis = SatisOzeti(depo: depo)
         let saglik = KoloniSagligi(kovanlar: depo.veri.kovanlar)
         Kart {
             HStack {
@@ -26,19 +26,20 @@ struct OzetRaporKarti: View {
             }
             HStack(alignment: .top, spacing: 8) {
                 kutu {
-                    Halka(oran: uretim.oran, renk: Renk.bal, metin: uretim.oran.map { "%\(Int(($0 * 100).rounded()))" } ?? "—")
-                    Text("Sezon bal üretimi").font(Yazi.minik).foregroundStyle(Renk.metin2).multilineTextAlignment(.center)
-                    Text(miktar(uretim.buSezon, "kg")).font(Yazi.kucukOrta)
-                    if let o = uretim.gecenSezon { Text("Geçen: \(miktar(o, "kg"))").font(Yazi.minik).foregroundStyle(Renk.metin3) }
+                    Halka(oran: satis.tahsilatOrani, renk: Renk.bal, metin: satis.tahsilatOrani.map { "%\(Int(($0 * 100).rounded()))" } ?? "—")
+                    Text("Tahsilat").font(Yazi.minik).foregroundStyle(Renk.metin2)
+                    Text(tl(satis.toplam)).font(Yazi.kucukOrta).lineLimit(1).minimumScaleFactor(0.7)
+                    Text(satis.bekleyen > 0 ? "\(tl(satis.bekleyen)) bekliyor" : "Bekleyen yok")
+                        .font(Yazi.minik).foregroundStyle(satis.bekleyen > 0 ? Renk.uyari : Renk.metin3).lineLimit(1).minimumScaleFactor(0.7)
                 }
                 kutu {
-                    Text("Aylık bal (kg)").font(Yazi.minik).foregroundStyle(Renk.metin2)
-                    if uretim.aylik.allSatisfy({ $0.kg == 0 }) {
-                        Text("Bu sezon bal girişi yok").font(Yazi.minik).foregroundStyle(Renk.metin3)
+                    Text("Aylık satış (₺)").font(Yazi.minik).foregroundStyle(Renk.metin2)
+                    if satis.aylik.allSatisfy({ $0.tutar == 0 }) {
+                        Text("Bu sezon satış yok").font(Yazi.minik).foregroundStyle(Renk.metin3)
                             .multilineTextAlignment(.center).frame(maxHeight: .infinity)
                     } else {
-                        Chart(uretim.aylik) { a in
-                            BarMark(x: .value("Ay", a.ad), y: .value("kg", a.kg))
+                        Chart(satis.aylik) { a in
+                            BarMark(x: .value("Ay", a.ad), y: .value("₺", a.tutar))
                                 .foregroundStyle(LinearGradient(colors: [Renk.acikBal, Renk.bal], startPoint: .top, endPoint: .bottom))
                                 .cornerRadius(3)
                         }
@@ -93,6 +94,29 @@ struct Halka: View {
             Text(metin).font(Yazi.kucukOrta).foregroundStyle(Renk.metin)
         }
         .frame(width: boyut, height: boyut)
+    }
+}
+
+/// Sezon satışları: toplam, tahsil edilen oran, son 6 ayın aylık satış tutarı (hediye/zekat hariç).
+struct SatisOzeti {
+    struct Ay: Identifiable { let id: String; let ad: String; let tutar: Double }
+    let toplam: Double
+    let bekleyen: Double
+    let aylik: [Ay]
+    var tahsilatOrani: Double? { toplam > 0 ? max(0, toplam - bekleyen) / toplam : nil }
+
+    @MainActor init(depo: VeriDeposu) {
+        let satislar = depo.sezonda(depo.veri.satislar).filter { !["hediye", "zekat"].contains($0.payment ?? "") }
+        toplam = satislar.reduce(0) { $0 + ($1.total ?? 0) }
+        bekleyen = bekleyenToplam(satislar: satislar)
+        let c = Calendar.current
+        let adlar = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"]
+        aylik = (0..<6).reversed().compactMap { fark -> Ay? in
+            guard let d = c.date(byAdding: .month, value: -fark, to: Date()) else { return nil }
+            let m = c.component(.month, from: d)
+            let onek = String(format: "%04d-%02d", c.component(.year, from: d), m)
+            return Ay(id: onek, ad: adlar[m - 1], tutar: satislar.filter { ($0.date ?? "").hasPrefix(onek) }.reduce(0) { $0 + ($1.total ?? 0) })
+        }
     }
 }
 

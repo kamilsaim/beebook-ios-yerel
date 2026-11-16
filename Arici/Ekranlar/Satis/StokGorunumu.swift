@@ -230,24 +230,22 @@ struct StokGorunumu: View {
     // MARK: Gider özeti (bu ay)
 
     private var giderOzeti: some View {
-        let ay = String(bugunISO().prefix(7))
-        let buAy = depo.veri.giderler.filter { ($0.date ?? "").hasPrefix(ay) }
+        let buAy = depo.sezonda(depo.veri.giderler)
+        let sezonAdi = depo.veri.sezonlar.first { $0.id == depo.ayarlar.activeSeason }?.name ?? "Sezon"
         let toplam = buAy.reduce(0) { $0 + ($1.amount ?? 0) }
         let turler = Dictionary(grouping: buAy, by: { $0.type ?? "diger" })
             .map { GiderTuru(ad: depo.giderTurAdi($0.key), tutar: $0.value.reduce(0) { $0 + ($1.amount ?? 0) }) }
             .sorted { $0.tutar > $1.tutar }
-        let aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
-        let ayAdi = aylar[(Int(ay.suffix(2)) ?? 1) - 1]
         return Kart {
             HStack {
                 Image(systemName: "doc.text").foregroundStyle(Renk.orman2)
                 Text("Gider Özeti").font(Yazi.kartBaslik)
                 Spacer()
-                Text("Bu ay (\(ayAdi))").font(Yazi.etiket).foregroundStyle(Renk.metin3)
+                Text(sezonAdi).font(Yazi.etiket).foregroundStyle(Renk.metin3)
             }
             HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Toplam gider").font(Yazi.kucuk).foregroundStyle(Color(white: 0.85))
+                    Text("Sezon gideri").font(Yazi.kucuk).foregroundStyle(Color(white: 0.85))
                     Text(tl(toplam)).font(Yazi.nunito(24, .bold)).foregroundStyle(Renk.bal).lineLimit(1).minimumScaleFactor(0.6)
                 }
                 .padding(12)
@@ -255,7 +253,7 @@ struct StokGorunumu: View {
                 .background(LinearGradient(colors: [Renk.orman2, Renk.ormanKoyu], startPoint: .topLeading, endPoint: .bottomTrailing),
                             in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 VStack(alignment: .leading, spacing: 5) {
-                    if turler.isEmpty { Text("Bu ay gider yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
+                    if turler.isEmpty { Text("Bu sezon gider yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
                     ForEach(turler.prefix(4), id: \.ad) { t in
                         HStack {
                             Text(t.ad).font(Yazi.kucuk).lineLimit(1)
