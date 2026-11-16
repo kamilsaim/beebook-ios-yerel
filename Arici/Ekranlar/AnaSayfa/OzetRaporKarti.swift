@@ -105,7 +105,7 @@ struct BalUretimi {
     /// Bu sezon / geçen sezon (geçen sezon yoksa nil).
     var oran: Double? { gecenSezon.flatMap { $0 > 0 ? buSezon / $0 : nil } }
 
-    init(depo: VeriDeposu) {
+    @MainActor init(depo: VeriDeposu) {
         let balIdleri = Set(depo.urunler.filter { u in
             let ad = (u.v + " " + u.l).lowercased()
             return ad.contains("bal") && !ad.contains("balmumu") && ["kg", "gr"].contains(u.unit)
