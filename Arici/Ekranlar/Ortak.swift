@@ -27,6 +27,19 @@ extension Kovan {
     /// Renk noktası yalnız ana olan/olacak kovanlarda (web showQDot).
     var anaNoktasiGoster: Bool { ["yes", "bakire", "new", "meme"].contains(queenStatus ?? "") }
     var sorunlu: Bool { queenStatus == "no" }
+    /// Arısız kovan: web'deki gibi gri gösterilir.
+    var arisiz: Bool { queenStatus == "empty" }
+    /// Kart ışıması: ana var yeşil, bakire mavi, anasız kırmızı, meme mor, bilinmiyor bal, arısız yok.
+    var isimaRengi: Color? {
+        switch queenStatus {
+        case "yes": return Color(red: 0.36, green: 0.85, blue: 0.45)
+        case "bakire", "new": return Color(red: 0.4, green: 0.68, blue: 1)
+        case "no": return Color(red: 1, green: 0.36, blue: 0.3)
+        case "meme": return Color(red: 0.74, green: 0.5, blue: 1)
+        case "empty": return nil
+        default: return Renk.bal
+        }
+    }
     var numara: Int { Int(num.trimmingCharacters(in: .whitespaces)) ?? Int.max }
     var katSayisi: Int { max(1, min(4, Int(floors ?? 1))) }
 

@@ -56,6 +56,7 @@ struct KovanFormu: View {
                 }
             }
             .navigationTitle(kovanId == nil ? "Yeni Kovan" : "Kovanı Düzenle")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
@@ -154,6 +155,7 @@ struct TopluKovanFormu: View {
                 if let b = Int(baslangic) { Section { Text("Kovan \(b) – \(b + adet - 1) eklenecek").foregroundStyle(.secondary) } }
             }
             .navigationTitle("Toplu Kovan")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }

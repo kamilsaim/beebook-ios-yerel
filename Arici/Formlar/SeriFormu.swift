@@ -62,6 +62,7 @@ struct SeriFormu: View {
                 if seriId != nil { Section { Button("Seriyi sil", role: .destructive) { silOnay = true } } }
             }
             .navigationTitle(seriId == nil ? "Yeni Seri" : "Seri")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }

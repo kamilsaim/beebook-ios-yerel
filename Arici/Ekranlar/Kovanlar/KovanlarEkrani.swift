@@ -188,6 +188,7 @@ struct KovanSatiri: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(kovan.gorselAdi).resizable().scaledToFit().frame(width: 76, height: 76)
+                .grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.6 : 1)
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 6) {
                     Text("Kovan \(kovan.num)").font(Yazi.nunito(17, .bold))
@@ -209,10 +210,7 @@ struct KovanSatiri: View {
             Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Renk.metin3)
         }
         .padding(.vertical, 8).padding(.leading, 6).padding(.trailing, 12)
-        .background(Renk.krem, in: RoundedRectangle(cornerRadius: Olcu.kartYaricap, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Olcu.kartYaricap, style: .continuous).strokeBorder(kovan.sorunlu ? Renk.kotu : .clear, lineWidth: 2))
-        .shadow(color: .black.opacity(0.22), radius: 9, y: 6)
-        .foregroundStyle(Renk.metin)
+        .kovanKartiStili(kovan, yaricap: Olcu.kartYaricap)
         .accessibilityElement(children: .combine)
     }
 
@@ -233,6 +231,7 @@ struct KovanIzgaraHucresi: View {
     var body: some View {
         VStack(spacing: 4) {
             Image(kovan.gorselAdi).resizable().scaledToFit().frame(height: 70)
+                .grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.6 : 1)
             HStack(spacing: 4) {
                 if kovan.anaNoktasiGoster { AnaNoktasi(renk: kovan.queenColor, boyut: 9) }
                 Text(kovan.num).font(Yazi.nunito(16, .bold))
@@ -241,8 +240,20 @@ struct KovanIzgaraHucresi: View {
         }
         .padding(8)
         .frame(maxWidth: .infinity)
-        .background(Renk.krem, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(kovan.sorunlu ? Renk.kotu : .clear, lineWidth: 2))
-        .foregroundStyle(Renk.metin)
+        .kovanKartiStili(kovan, yaricap: 18)
+    }
+}
+
+extension View {
+    /// Kovan kartı: krem zemin + ana arı durumuna göre renkli ışıma; arısız kovan gri ve ışımasız.
+    func kovanKartiStili(_ kovan: Kovan, yaricap: CGFloat) -> some View {
+        let sekil = RoundedRectangle(cornerRadius: yaricap, style: .continuous)
+        let isik = kovan.isimaRengi
+        return self
+            .background(kovan.arisiz ? Color(white: 0.78) : Renk.krem, in: sekil)
+            .overlay(sekil.strokeBorder((isik ?? .clear).opacity(kovan.sorunlu ? 0.95 : 0.7), lineWidth: kovan.sorunlu ? 2 : 1.5))
+            .shadow(color: (isik ?? .black).opacity(isik == nil ? 0.2 : 0.55), radius: 10)
+            .shadow(color: .black.opacity(0.2), radius: 6, y: 5)
+            .foregroundStyle(kovan.arisiz ? Color(white: 0.3) : Renk.metin)
     }
 }

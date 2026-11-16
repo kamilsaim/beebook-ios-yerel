@@ -126,17 +126,19 @@ struct ManzaraBasligi<Icerik: View>: View {
             .padding(.bottom, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                ZStack {
-                    Image(gorsel).resizable().scaledToFill()
-                    LinearGradient(stops: [
-                        .init(color: Renk.ormanKoyu.opacity(0.55), location: 0),
-                        .init(color: Renk.ormanKoyu.opacity(0.1), location: 0.4),
-                        .init(color: Renk.orman.opacity(0.95), location: 1)
-                    ], startPoint: .top, endPoint: .bottom)
-                }
-                .ignoresSafeArea(edges: .top)
+                // Görsel durum çubuğunun arkasına da uzanır (eskiden .clipped() üstte koyu bant bırakıyordu).
+                Color.clear
+                    .overlay { Image(gorsel).resizable().scaledToFill() }
+                    .overlay {
+                        LinearGradient(stops: [
+                            .init(color: Renk.ormanKoyu.opacity(0.55), location: 0),
+                            .init(color: Renk.ormanKoyu.opacity(0.1), location: 0.4),
+                            .init(color: Renk.orman.opacity(0.95), location: 1)
+                        ], startPoint: .top, endPoint: .bottom)
+                    }
+                    .clipped()
+                    .padding(.top, -200)
             }
-            .clipped()
             .foregroundStyle(.white)
     }
 }
@@ -206,5 +208,31 @@ struct BosDurum: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 30)
+    }
+}
+
+/// Tam sayfa arka plan: orman yeşili + yumuşak bokeh görseli (formlar, alt sayfalar, sayfa altları).
+struct SayfaArkaplani: View {
+    var gorsel = "ArkaYesil"
+    var body: some View {
+        ZStack {
+            Renk.orman
+            Image(gorsel).resizable().scaledToFill().opacity(0.55)
+            LinearGradient(colors: [Renk.ormanKoyu.opacity(0.35), Renk.orman.opacity(0.55), Renk.ormanKoyu.opacity(0.7)],
+                           startPoint: .top, endPoint: .bottom)
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
+    }
+}
+
+extension View {
+    /// Form/List sayfalarında siyah sistem arka planı yerine tam sayfa görselli arka plan.
+    /// Sayfa (sheet) olarak açıldıysa sunum arka planını da ayarlar.
+    func formArkaplani() -> some View {
+        self.scrollContentBackground(.hidden)
+            .background(SayfaArkaplani())
+            .presentationBackground { SayfaArkaplani() }
+            .toolbarBackground(.hidden, for: .navigationBar)
     }
 }

@@ -56,8 +56,9 @@ struct SatisEkrani: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(Renk.orman.ignoresSafeArea())
+        .background(SayfaArkaplani(gorsel: "ArkaIsik"))
         .coordinateSpace(name: "kaydirma")
+        .menuInceltme(menu)
         .environment(\.defaultMinListRowHeight, 0)
         .overlay(alignment: .bottomTrailing) {
             if bolum == .satislar {

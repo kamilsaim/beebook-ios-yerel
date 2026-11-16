@@ -1,48 +1,60 @@
 import AriCekirdek
 import SwiftUI
 
-/// Takvimli yapılacaklar: haftalık şerit, işaretleme, toplu iş etiketi, hızlı ekleme.
+/// Takvimli yapılacaklar (web renderMiniCal gibi): aylık takvim + ay geçişi, seçili günün tüm işleri
+/// (tamamlananlar dahil), "Tümü" ile tarihe göre gruplu tam liste (gecikenler uyarılı).
 struct YapilacaklarKarti: View {
     @Environment(VeriDeposu.self) private var depo
     @State private var secili = bugunISO()
+    @State private var ay = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())) ?? Date()
     @State private var formAcik = false
     @State private var tumu = false
+    @State private var tamamlananlar = false
 
-    private var hafta: [Date] {
-        var c = Calendar(identifier: .gregorian)
-        c.firstWeekday = 2
-        let bas = c.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
-        return (0..<7).compactMap { c.date(byAdding: .day, value: $0, to: bas) }
+    private static let aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
+
+    /// Ayın günleri; pazartesi başlangıçlı ızgara için baştaki boşluklar nil.
+    private var gunler: [Date?] {
+        let c = Calendar.current
+        guard let aralik = c.range(of: .day, in: .month, for: ay) else { return [] }
+        let bosluk = (c.component(.weekday, from: ay) + 5) % 7
+        return Array(repeating: nil, count: bosluk) + aralik.compactMap { c.date(byAdding: .day, value: $0 - 1, to: ay) }
     }
 
     var body: some View {
         let isler = depo.veri.isler
-        let gunun = isler.filter { ($0.dueDate ?? "") == secili }
-        let tarihsiz = isler.filter { ($0.dueDate ?? "").isEmpty && !$0.done }
+        let tarihli = Dictionary(grouping: isler.filter { !($0.dueDate ?? "").isEmpty }, by: { String(($0.dueDate ?? "").prefix(10)) })
+        let bugun = bugunISO()
         Kart {
-            KartBasligi(baslik: "Yapılacaklar", baglanti: tumu ? "Kapat" : "Tümü") { tumu.toggle() }
-            HStack(spacing: 4) {
-                ForEach(hafta, id: \.self) { g in
-                    let iso = bugunISO(g)
-                    Button { secili = iso } label: {
-                        VStack(spacing: 2) {
-                            Text(gunKisa(g)).font(Yazi.minik).foregroundStyle(secili == iso ? Color(white: 0.85) : Renk.metin3)
-                            Text("\(Calendar.current.component(.day, from: g))").font(Yazi.govdeOrta)
-                                .foregroundStyle(secili == iso ? .white : Renk.metin)
-                            Circle().fill(isler.contains { $0.dueDate == iso } ? Renk.bal : .clear).frame(width: 5, height: 5)
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 50)
-                        .background(secili == iso ? Renk.orman : .clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(iso)
+            KartBasligi(baslik: "Yapılacaklar", baglanti: tumu ? "Takvim" : "Tümü") { tumu.toggle() }
+            if tumu {
+                tumListe(tarihli: tarihli, tarihsiz: isler.filter { ($0.dueDate ?? "").isEmpty }, bugun: bugun)
+            } else {
+                HStack {
+                    Button { ayDegistir(-1) } label: { Image(systemName: "chevron.left").frame(width: 36, height: 32) }
+                        .accessibilityLabel("Önceki ay")
+                    Spacer()
+                    Text("\(Self.aylar[Calendar.current.component(.month, from: ay) - 1]) \(String(Calendar.current.component(.year, from: ay)))")
+                        .font(Yazi.govdeOrta)
+                    Spacer()
+                    Button { ayDegistir(1) } label: { Image(systemName: "chevron.right").frame(width: 36, height: 32) }
+                        .accessibilityLabel("Sonraki ay")
                 }
+                .buttonStyle(.plain).foregroundStyle(Renk.orman2)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 7), spacing: 3) {
+                    ForEach(["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"], id: \.self) { Text($0).font(Yazi.minik).foregroundStyle(Renk.metin3) }
+                    ForEach(Array(gunler.enumerated()), id: \.offset) { _, g in
+                        if let g { gunHucresi(g, tarihli: tarihli, bugun: bugun) } else { Color.clear.frame(height: 40) }
+                    }
+                }
+                let gunun = tarihli[secili] ?? []
+                let tarihsiz = secili == bugun ? isler.filter { ($0.dueDate ?? "").isEmpty && !$0.done } : []
+                Text(secili == bugun ? "Bugün" : kisaTarih(secili)).font(Yazi.kucukOrta).foregroundStyle(Renk.metin2).padding(.top, 2)
+                if gunun.isEmpty && tarihsiz.isEmpty {
+                    Text("Bu gün için iş yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3).padding(.vertical, 4)
+                }
+                ForEach(gunun.sorted { !$0.done && $1.done } + tarihsiz, id: \.id) { is_ in satir(is_) }
             }
-            let gosterilen = tumu ? isler.filter { !$0.done }.sorted { ($0.dueDate ?? "9") < ($1.dueDate ?? "9") } : gunun + (secili == bugunISO() ? tarihsiz : [])
-            if gosterilen.isEmpty {
-                Text("Bu gün için iş yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3).padding(.vertical, 4)
-            }
-            ForEach(gosterilen, id: \.id) { is_ in satir(is_) }
             Button { formAcik = true } label: {
                 HStack {
                     Text("İş ekle… ör. \"1-10 kat ekle\"").font(Yazi.kucuk).foregroundStyle(Renk.metin3)
@@ -56,6 +68,50 @@ struct YapilacaklarKarti: View {
             .buttonStyle(.plain)
         }
         .sheet(isPresented: $formAcik) { IsFormu(tarih: secili) }
+    }
+
+    private func gunHucresi(_ g: Date, tarihli: [String: [Is]], bugun: String) -> some View {
+        let iso = bugunISO(g)
+        let o = tarihli[iso] ?? []
+        let acik = o.contains { !$0.done }
+        let gecikti = acik && iso < bugun
+        return Button { secili = iso } label: {
+            VStack(spacing: 2) {
+                Text("\(Calendar.current.component(.day, from: g))").font(iso == bugun ? Yazi.govdeOrta : Yazi.govde)
+                    .foregroundStyle(secili == iso ? .white : iso == bugun ? Renk.orman2 : Renk.metin)
+                Circle().fill(o.isEmpty ? .clear : gecikti ? Renk.kotu : acik ? Renk.bal : Renk.iyi).frame(width: 5, height: 5)
+            }
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .background(secili == iso ? Renk.orman : iso == bugun ? Renk.bal.opacity(0.18) : .clear,
+                        in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(kisaTarih(iso)), \(o.count) iş")
+    }
+
+    @ViewBuilder
+    private func tumListe(tarihli: [String: [Is]], tarihsiz: [Is], bugun: String) -> some View {
+        Toggle("Tamamlananları göster", isOn: $tamamlananlar).font(Yazi.kucuk).tint(Renk.orman2)
+        let tarihler = tarihli.keys.sorted().filter { d in tamamlananlar || tarihli[d]!.contains { !$0.done } }
+        let tarihsizGor = tarihsiz.filter { tamamlananlar || !$0.done }
+        if tarihler.isEmpty && tarihsizGor.isEmpty {
+            Text("Açık iş yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3).padding(.vertical, 4)
+        }
+        ForEach(tarihler, id: \.self) { d in
+            let o = tarihli[d]!.filter { tamamlananlar || !$0.done }
+            let gecikti = d < bugun && o.contains { !$0.done }
+            Text((gecikti ? "⚠️ " : "") + (d == bugun ? "Bugün" : kisaTarih(d)))
+                .font(Yazi.kucukOrta).foregroundStyle(gecikti ? Renk.kotu : d == bugun ? Renk.orman2 : Renk.metin3).padding(.top, 4)
+            ForEach(o, id: \.id) { is_ in satir(is_) }
+        }
+        if !tarihsizGor.isEmpty {
+            Text("Tarihsiz").font(Yazi.kucukOrta).foregroundStyle(Renk.metin3).padding(.top, 4)
+            ForEach(tarihsizGor, id: \.id) { is_ in satir(is_) }
+        }
+    }
+
+    private func ayDegistir(_ fark: Int) {
+        ay = Calendar.current.date(byAdding: .month, value: fark, to: ay) ?? ay
     }
 
     private func satir(_ i: Is) -> some View {
@@ -73,7 +129,7 @@ struct YapilacaklarKarti: View {
             .accessibilityLabel(i.done ? "Tamamlandı" : "Tamamla")
             VStack(alignment: .leading, spacing: 3) {
                 Text(i.text).font(Yazi.govde).strikethrough(i.done).foregroundStyle(i.done ? Renk.metin3 : Renk.metin)
-                if let d = i.dueDate, !d.isEmpty, d != secili { Text(kisaTarih(d)).font(Yazi.etiket).foregroundStyle(Renk.metin3) }
+                if let d = i.dueDate, !d.isEmpty, d != secili, !tumu { Text(kisaTarih(d)).font(Yazi.etiket).foregroundStyle(Renk.metin3) }
                 if let s = i.scope, !s.isEmpty {
                     Rozet(metin: topluEtiket(s, i.hiveIds?.count), tur: .bilgi)
                 }
@@ -94,9 +150,6 @@ struct YapilacaklarKarti: View {
         return sayi.map { "\(k) · \($0) kovan" } ?? k
     }
 
-    private func gunKisa(_ d: Date) -> String {
-        ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"][Calendar.current.component(.weekday, from: d) - 1]
-    }
 }
 
 /// İş ekleme: metin, tarih, toplu kapsam ("12-18", "Tüm Langstroth") + canlı kovan sayısı.
@@ -129,6 +182,7 @@ struct IsFormu: View {
                 }
             }
             .navigationTitle("Yeni İş")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }

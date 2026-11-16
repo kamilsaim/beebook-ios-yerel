@@ -87,6 +87,7 @@ struct SezonFormu: View {
                 Text("Oluşturulunca aktif sezon olur.").font(.caption).foregroundStyle(.secondary)
             }
             .navigationTitle("Yeni Sezon").navigationBarTitleDisplayMode(.inline)
+            .formArkaplani()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
                 ToolbarItem(placement: .confirmationAction) {

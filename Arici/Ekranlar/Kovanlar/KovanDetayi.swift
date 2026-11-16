@@ -189,6 +189,7 @@ struct MuayeneFormu: View {
                 }
             }
             .navigationTitle("Muayene")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }

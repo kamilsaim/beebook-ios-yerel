@@ -13,7 +13,7 @@ struct AraziGorunumu: View {
         let kovanlar = depo.veri.kovanlar
         let konumlar = konumlariOku()
         let yerlesmemis = kovanlar.filter { konumlar[$0.id] == nil }
-        let genislik = max(340, (konumlar.values.map(\.x).max() ?? 0) + hucre + 40)
+        let genislik = max(UIScreen.main.bounds.width - 2 * Olcu.kenar, (konumlar.values.map(\.x).max() ?? 0) + hucre + 40)
         let yukseklik = max(420, (konumlar.values.map(\.y).max() ?? 0) + hucre + 80)
 
         VStack(alignment: .leading, spacing: 10) {
@@ -48,7 +48,16 @@ struct AraziGorunumu: View {
                 .frame(width: genislik, height: yukseklik, alignment: .topLeading)
             }
             .frame(height: 440)
+            // İçerik çerçeveden küçük kalırsa ya da kenara kaydırılınca siyah boşluk görünmesin.
+            .background {
+                Color.clear
+                    .overlay { Image("ArkaCicek").resizable().scaledToFill() }
+                    .overlay { Renk.orman.opacity(0.3) }
+                    .clipped()
+            }
+            .scrollBounceBehavior(.basedOnSize, axes: [.horizontal, .vertical])
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Renk.bal.opacity(0.35), lineWidth: 1))
             .shadow(color: .black.opacity(0.35), radius: 12, y: 8)
 
             HStack(spacing: 8) {
@@ -122,6 +131,8 @@ struct AraziKovani: View {
     var body: some View {
         VStack(spacing: -4) {
             Image(kovan.gorselAdi).resizable().scaledToFit().frame(width: genislik)
+                .grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.65 : 1)
+                .shadow(color: (kovan.isimaRengi ?? .black).opacity(kovan.isimaRengi == nil ? 0.4 : 0.8), radius: 6)
                 .shadow(color: .black.opacity(0.4), radius: 4, y: 4)
             HStack(spacing: 3) {
                 if kovan.anaNoktasiGoster && !kovan.sorunlu { AnaNoktasi(renk: kovan.queenColor, boyut: 8) }
@@ -135,5 +146,5 @@ struct AraziKovani: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Kovan \(kovan.num), \(kovan.anaDurumMetni)")
     }
-    private var etiketRenk: Color { kovan.queenStatus == "meme" ? Renk.mor : Renk.kart }
+    private var etiketRenk: Color { kovan.queenStatus == "meme" ? Renk.mor : kovan.arisiz ? Color(white: 0.75) : Renk.kart }
 }

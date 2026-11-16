@@ -2,7 +2,8 @@
   "images": [
     {
       "idiom": "universal",
-      "filename": "acilis.png"
+      "filename": "acilis.png",
+      "scale": "3x"
     }
   ],
   "info": {

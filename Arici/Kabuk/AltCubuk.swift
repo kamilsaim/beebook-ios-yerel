@@ -264,23 +264,62 @@ private struct OfsetAnahtari: PreferenceKey {
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
-/// Bir ScrollView'u menünün incelmesine bağlar: aşağı >6 pt ve y>80 → ince; yukarı >6 pt ya da y<40 → normal.
+/// Kaydırma yönü → menü incelmesi. Dayanak noktası yalnız eşik aşılınca taşınır
+/// (eskiden her karede güncelleniyordu; yavaş kaydırmada kare başı fark 6 pt'yi hiç aşmadığı için menü incelmiyordu).
+struct InceltmeHesabi {
+    private var dayanak: CGFloat = 0
+    mutating func uygula(_ y: CGFloat, _ durum: MenuDurumu) {
+        if y < 40 {
+            if durum.ince { durum.ince = false }
+            dayanak = y
+        } else if y > dayanak + 24 {
+            if y > 80, !durum.ince { durum.ince = true }
+            dayanak = y
+        } else if y < dayanak - 24 {
+            if durum.ince { durum.ince = false }
+            dayanak = y
+        }
+    }
+}
+
+/// İçerik tarafı (iOS 17 yedeği): kaydırma içeriğine eklenir, "kaydirma" koordinat alanına göre ofset okur.
 struct InceltmeIzleyici: ViewModifier {
     let durum: MenuDurumu
-    @State private var son: CGFloat = 0
+    @State private var hesap = InceltmeHesabi()
     func body(content: Content) -> some View {
-        content
-            .background(GeometryReader { g in
-                Color.clear.preference(key: OfsetAnahtari.self, value: -g.frame(in: .named("kaydirma")).minY)
-            })
-            .onPreferenceChange(OfsetAnahtari.self) { y in
-                MainActor.assumeIsolated {
-                    if y > son + 6 && y > 80 { if !durum.ince { durum.ince = true } }
-                    else if y < son - 6 || y < 40 { if durum.ince { durum.ince = false } }
-                    son = y
+        if #available(iOS 18, *) {
+            content // iOS 18+: kaydırma kabındaki .menuInceltme() izler
+        } else {
+            content
+                .background(GeometryReader { g in
+                    Color.clear.preference(key: OfsetAnahtari.self, value: -g.frame(in: .named("kaydirma")).minY)
+                })
+                .onPreferenceChange(OfsetAnahtari.self) { y in
+                    MainActor.assumeIsolated { hesap.uygula(y, durum) }
                 }
-            }
+        }
     }
+}
+
+/// Kap tarafı (iOS 18+): ScrollView/List'in gerçek içerik ofsetini izler.
+struct MenuInceltme: ViewModifier {
+    let durum: MenuDurumu
+    @State private var hesap = InceltmeHesabi()
+    func body(content: Content) -> some View {
+        if #available(iOS 18, *) {
+            content.onScrollGeometryChange(for: CGFloat.self) { g in
+                g.contentOffset.y + g.contentInsets.top
+            } action: { _, y in
+                hesap.uygula(y, durum)
+            }
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    func menuInceltme(_ durum: MenuDurumu) -> some View { modifier(MenuInceltme(durum: durum)) }
 }
 
 /// Sekme ekranlarının ortak kaydırma kabı: koordinat alanı + incelme + alt menü payı.
@@ -294,7 +333,8 @@ struct SekmeKaydirma<Icerik: View>: View {
                 .padding(.bottom, Olcu.altCubukPayi)
         }
         .coordinateSpace(name: "kaydirma")
+        .menuInceltme(menu)
         .scrollIndicators(.hidden)
-        .background(Renk.orman.ignoresSafeArea())
+        .background(SayfaArkaplani())
     }
 }

@@ -24,6 +24,7 @@ struct UrunFormu: View {
     @State private var yuklendi = false
     @State private var kaydediliyor = false
     @State private var yuklemeHatasi: String?
+    @State private var kopyalandi = false
 
     private var hesapli: Bool { oturum.kullaniciId != nil }
     private var hazirUrun: Bool { urunId.map { id in hazirUrunler.contains { $0.v == id } } ?? false }
@@ -59,6 +60,20 @@ struct UrunFormu: View {
                     }
                     .scrollIndicators(.hidden)
                 }
+                Section {
+                    Text(yapayZekaKomutu).font(Yazi.kucuk).foregroundStyle(.secondary).textSelection(.enabled)
+                    HStack {
+                        Button {
+                            UIPasteboard.general.string = yapayZekaKomutu
+                            kopyalandi = true
+                        } label: { Label(kopyalandi ? "Kopyalandı" : "Komutu kopyala", systemImage: kopyalandi ? "checkmark" : "doc.on.doc") }
+                        Spacer()
+                        ShareLink(item: yapayZekaKomutu) { Label("Paylaş", systemImage: "square.and.arrow.up") }
+                    }
+                    .buttonStyle(.borderless).tint(Renk.bal)
+                } header: { Text("Yapay zekâ ile görsel") } footer: {
+                    Text("Komutu ChatGPT, Gemini gibi bir uygulamaya yapıştır; çıkan görseli kaydedip yukarıdan \"Galeriden seç\" ile ekle. Görsel diğer simgelerle aynı tarzda olur.")
+                }
                 Section("Ürün") {
                     TextField("Ad (ör. Bal Sirkesi)", text: $ad).disabled(hazirUrun)
                     Picker("Birim", selection: $birim) { ForEach(Birim.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
@@ -80,6 +95,7 @@ struct UrunFormu: View {
                 }
             }
             .navigationTitle(urunId == nil ? "Yeni Ürün" : "Ürünü Düzenle")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
@@ -102,6 +118,15 @@ struct UrunFormu: View {
             }
             .onAppear(perform: yukle)
         }
+    }
+
+    /// Uygulamadaki ürün simgeleriyle aynı tarzda görsel üretmek için hazır komut.
+    private var yapayZekaKomutu: String {
+        let urun = ad.trimmingCharacters(in: .whitespaces).isEmpty ? "ürün" : ad.trimmingCharacters(in: .whitespaces)
+        let kap = birim == .lt || birim == .ml ? "cam şişe içinde" : birim == .adet ? "" : "cam kavanoz ya da kâse içinde"
+        return "Kare (1:1) uygulama ürün simgesi: \(urun)\(kap.isEmpty ? "" : ", " + kap). Parlak, sıcak tonlu 3B illüstrasyon; altın bal sarısı vurgular, "
+            + "ürünün dibinde küçük beyaz papatyalar ve yeşil yapraklar. Arka plan koyu orman yeşili (#0D3B2E), hafif altın ışıltılı, "
+            + "yuvarlatılmış kare kart. Ürün ortada ve kartın büyük kısmını kaplasın. Yazı, logo veya etiket olmasın."
     }
 
     @ViewBuilder

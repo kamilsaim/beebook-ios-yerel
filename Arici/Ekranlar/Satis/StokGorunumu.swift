@@ -99,6 +99,7 @@ struct StokGirisFormu: View {
                 TextField("Not (ör. Yaz hasadı)", text: $not)
             }
             .navigationTitle("Stok Girişi")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
@@ -146,6 +147,7 @@ struct ZekatSayfasi: View {
                 }
             }
             .navigationTitle("Zekat")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } } }
         }
@@ -174,6 +176,7 @@ struct StokRaporuSayfasi: View {
                 }
             }
             .navigationTitle("Stok Raporu")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } } }
         }
@@ -212,6 +215,7 @@ struct SatisRaporuSayfasi: View {
                 }
             }
             .navigationTitle("Satış Raporu")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } } }
         }

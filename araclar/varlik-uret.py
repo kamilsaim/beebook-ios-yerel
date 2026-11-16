@@ -45,7 +45,7 @@ def renk_seti(ad, hx):
                                               'blue': f'{b / 255:.3f}', 'alpha': '1.000'}}}], 'info': BILGI})
 
 
-def gorsel_seti(ad, img, en_fazla, jpeg=False):
+def gorsel_seti(ad, img, en_fazla, jpeg=False, olcek=None):
     """Tek ölçekli (universal) görsel; en uzun kenar en_fazla px."""
     klasor = os.path.join(VARLIK, f'{ad}.imageset')
     os.makedirs(klasor, exist_ok=True)
@@ -56,7 +56,10 @@ def gorsel_seti(ad, img, en_fazla, jpeg=False):
         img.convert('RGB').save(os.path.join(klasor, dosya), quality=82, optimize=True)
     else:
         img.save(os.path.join(klasor, dosya), optimize=True)
-    yaz_json(os.path.join(klasor, 'Contents.json'), {'images': [{'idiom': 'universal', 'filename': dosya}], 'info': BILGI})
+    giris = {'idiom': 'universal', 'filename': dosya}
+    if olcek:
+        giris['scale'] = olcek  # ör. 3x: 540 px → 180 pt (açılış ekranı)
+    yaz_json(os.path.join(klasor, 'Contents.json'), {'images': [giris], 'info': BILGI})
 
 
 def bul(desen, kok=MASA):
@@ -144,7 +147,7 @@ def main():
         'images': [{'filename': 'ikon-1024.png', 'idiom': 'universal', 'platform': 'ios', 'size': '1024x1024'}],
         'info': BILGI})
     gorsel_seti('Amblem', a, 360)
-    gorsel_seti('Acilis', a, 540)
+    gorsel_seti('Acilis', a, 540, olcek='3x')
 
     govde, kanat = ari_katmanlari()
     gorsel_seti('AriGovde', govde, 300)
@@ -164,11 +167,11 @@ def main():
     gorsel_seti('ArkaManzara', Image.open(bul('*12_21_32-9.png')), 1290, jpeg=True)
     gorsel_seti('ArkaYesil', Image.open(bul('*12_21_31-8.png')), 1290, jpeg=True)
     gorsel_seti('ArkaKrem', Image.open(bul('*12_21_33-10.png')), 1000, jpeg=True)
-    dort = Image.open(bul('*15_14_26-10.png')).convert('RGB')
-    gorsel_seti('ArkaCicek', dort.crop((0, 0, 627, 627)), 900, jpeg=True)
-    gorsel_seti('ArkaDag', dort.crop((627, 0, 1254, 627)), 900, jpeg=True)
-    gorsel_seti('ArkaPetek', dort.crop((0, 627, 627, 1254)), 900, jpeg=True)
-    gorsel_seti('ArkaIsik', dort.crop((627, 627, 1254, 1254)), 900, jpeg=True)
+    dort = Image.open(bul('*15_14_26-10.png')).convert('RGB')  # 2x2 ızgara; her karenin ~30 px koyu çerçevesi kırpılır
+    gorsel_seti('ArkaCicek', dort.crop((30, 30, 597, 597)), 900, jpeg=True)
+    gorsel_seti('ArkaDag', dort.crop((657, 30, 1224, 597)), 900, jpeg=True)
+    gorsel_seti('ArkaPetek', dort.crop((30, 657, 597, 1224)), 900, jpeg=True)
+    gorsel_seti('ArkaIsik', dort.crop((657, 657, 1224, 1224)), 900, jpeg=True)
 
     # Hızlı erişim ikon karoları
     ikonlar = Image.open(bul('*15_14_16-7.png')).convert('RGB')

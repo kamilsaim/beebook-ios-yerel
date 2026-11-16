@@ -64,8 +64,10 @@ struct DahaEkrani: View {
                             if s == .arazi { menu.git(.kovanlar); menu.araziIstegi += 1 } else { yol.append(s) }
                         } label: {
                             VStack(spacing: 6) {
-                                Image(s.gorsel).resizable().scaledToFit()
-                                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                // Kaynak simgelerin en/boy oranı farklı: hepsi aynı kareye doldurulur, köşe koyulukları kırpılır.
+                                Image(s.gorsel).resizable().scaledToFill()
+                                    .frame(width: 88, height: 88)
+                                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                                     .shadow(color: Renk.bal.opacity(0.3), radius: 8)
                                 Text(s.ad).font(Yazi.kucukOrta).foregroundStyle(Renk.krem)
                             }
@@ -91,11 +93,9 @@ struct DahaEkrani: View {
                     case .arazi: EmptyView()
                     }
                 }
-                .scrollContentBackground(.hidden)
-                .background(Renk.orman.ignoresSafeArea())
+                .formArkaplani()
                 .navigationTitle(s.ad)
                 .navigationBarTitleDisplayMode(.large)
-                .toolbarBackground(Renk.orman, for: .navigationBar)
                 .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 90) }
             }
         }
@@ -159,6 +159,7 @@ struct HasatFormu: View {
                 TextField("Not", text: $not)
             }
             .navigationTitle(hasatId == nil ? "Yeni Hasat" : "Hasat")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
@@ -244,6 +245,7 @@ struct EnvanterFormu: View {
                 TextField("Not", text: $not)
             }
             .navigationTitle(kalemId == nil ? "Yeni Malzeme" : "Malzeme")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
@@ -335,6 +337,7 @@ struct GiderFormu: View {
                 if odeme == "partial" { HStack { Text("Ödenen"); TextField("₺", value: $odenen, format: .number).keyboardType(.decimalPad).multilineTextAlignment(.trailing) } }
             }
             .navigationTitle(giderId == nil ? "Yeni Gider" : "Gider")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }

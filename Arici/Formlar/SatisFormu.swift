@@ -79,6 +79,7 @@ struct SatisFormu: View {
                 .listRowBackground(Renk.orman)
             }
             .navigationTitle(satisId == nil ? "Yeni Satış" : "Satışı Düzenle")
+            .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
