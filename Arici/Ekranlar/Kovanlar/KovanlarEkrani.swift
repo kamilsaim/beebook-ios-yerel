@@ -113,6 +113,7 @@ struct KovanlarEkrani: View {
         case "anasiz": k = k.filter { $0.queenStatus == "no" }
         case "bakire": k = k.filter { ["bakire", "new"].contains($0.queenStatus ?? "") }
         case "yasli": k = k.filter(\.yasliAna)
+        case "arisiz": k = k.filter(\.arisiz)
         default:
             if filtre.hasPrefix("irk:") { k = k.filter { $0.race == String(filtre.dropFirst(4)) } }
             if filtre.hasPrefix("tip:") { k = k.filter { $0.type == String(filtre.dropFirst(4)) } }
@@ -129,10 +130,11 @@ struct KovanlarEkrani: View {
         let hepsi = tumKovanlar
         VStack(spacing: 12) {
             HStack(spacing: 0) {
-                sayi("\(hepsi.count)", "Toplam", .white, simge: "archivebox.fill")
+                sayi("\(hepsi.count)", "Toplam", .white, simge: "square.stack.3d.up.fill")
                 sayi("\(hepsi.filter { $0.saglikDurumu == .saglikli }.count)", "Sağlıklı", Color(red: 0.62, green: 0.88, blue: 0.66), simge: "checkmark.circle.fill")
                 sayi("\(hepsi.filter { $0.saglikDurumu == .dikkat }.count)", "Dikkat", Renk.acikBal, simge: "exclamationmark.triangle.fill")
                 sayi("\(hepsi.filter { $0.saglikDurumu == .mudahale }.count)", "Müdahale", Color(red: 1, green: 0.62, blue: 0.56), simge: "xmark.circle.fill")
+                sayi("\(hepsi.filter(\.arisiz).count)", "Arısız", Color(white: 0.78), simge: "archivebox")
             }
             .padding(.vertical, 10)
             .background(.ultraThinMaterial.opacity(0.5), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -145,6 +147,7 @@ struct KovanlarEkrani: View {
                     cip("anasiz", "Anasız", nokta: Renk.kotu)
                     cip("bakire", "Bakire")
                     cip("yasli", "Yaşlı ana")
+                    cip("arisiz", "Arısız", nokta: Color(white: 0.7))
                     ForEach(Array(Set(hepsi.compactMap(\.race)).filter { !$0.isEmpty }).sorted(), id: \.self) { cip("irk:\($0)", $0) }
                     ForEach(Array(Set(hepsi.compactMap(\.type)).filter { !$0.isEmpty }).sorted(), id: \.self) { cip("tip:\($0)", $0) }
                 }

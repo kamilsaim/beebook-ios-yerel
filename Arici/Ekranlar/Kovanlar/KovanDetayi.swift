@@ -21,9 +21,11 @@ struct KovanDetayi: View {
                     }
                     HStack(alignment: .bottom, spacing: 12) {
                         Image(k.gorselAdi).resizable().scaledToFit().frame(width: 128, height: 128)
+                            .grayscale(k.arisiz ? 1 : 0)
                             .shadow(color: .black.opacity(0.45), radius: 10, y: 10)
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Kovan \(k.num)").font(Yazi.nunito(28, .bold)).foregroundStyle(Renk.krem)
+                            Text("Kovan \(k.num)").font(Yazi.logo(34)).foregroundStyle(Renk.krem)
+                                .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
                             Text([k.type, "\(k.katSayisi) kat", k.frames.map { "\(Int($0)) çerçeve" }].compactMap { $0 }.joined(separator: " · "))
                                 .font(Yazi.kucuk).foregroundStyle(Color(white: 0.8))
                             if let g = k.gucMetni { Rozet(metin: g, tur: g == "Zayıf" ? .kotu : g == "Orta" ? .uyari : .iyi) }
@@ -40,7 +42,7 @@ struct KovanDetayi: View {
                 .padding(.bottom, Olcu.altCubukPayi)
             }
             .scrollIndicators(.hidden)
-            .background(LinearGradient(colors: [Renk.orman, Color(red: 0.04, green: 0.19, blue: 0.15)], startPoint: .top, endPoint: .bottom).ignoresSafeArea())
+            .background(SayfaArkaplani(gorsel: "SayfaManzara", koyuluk: 0.85))
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $duzenle) { KovanFormu(kovanId: k.id) }
             .sheet(isPresented: $muayene) { MuayeneFormu(kovanId: k.id) }
@@ -63,8 +65,8 @@ struct KovanDetayi: View {
                     }
                 }
                 Spacer()
-                Rozet(metin: k.sorunlu ? "Müdahale" : k.yasliAna ? "Değişim önerilir" : "Sağlıklı",
-                      tur: k.sorunlu ? .kotu : k.yasliAna ? .uyari : .iyi)
+                Rozet(metin: k.arisiz ? "Arısız" : k.sorunlu ? "Müdahale" : k.yasliAna ? "Değişim önerilir" : k.saglikDurumu == .dikkat ? "Dikkat" : "Sağlıklı",
+                      tur: k.arisiz ? .notr : k.sorunlu ? .kotu : k.yasliAna || k.saglikDurumu == .dikkat ? .uyari : .iyi)
             }
             Grid(horizontalSpacing: 1, verticalSpacing: 1) {
                 GridRow { hucre("Irk", k.race); hucre("Kuşak", k.generation) }

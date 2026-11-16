@@ -64,7 +64,10 @@ struct OzetRaporKarti: View {
                     .navigationTitle("Raporlar")
                     .navigationBarTitleDisplayMode(.inline)
                     .formArkaplani()
-                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Tamam") { raporlar = false } } }
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) { Button("Tamam") { raporlar = false } }
+                        ToolbarItem(placement: .topBarLeading) { RaporPaylasDugmesi() }
+                    }
             }
         }
     }

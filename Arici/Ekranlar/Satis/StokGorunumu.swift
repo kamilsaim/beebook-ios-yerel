@@ -66,7 +66,7 @@ struct StokGorunumu: View {
                             Text(eklenebilir ? "kg · lt · gr · adet" : "En fazla \(ozelUrunSiniri)").font(Yazi.minik).opacity(0.8)
                         }
                         .foregroundStyle(Renk.orman2)
-                        .frame(width: 112, height: 170)
+                        .frame(width: 112, height: 184)
                         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Renk.bal.opacity(0.8), style: StrokeStyle(lineWidth: 1.6, dash: [6, 5])))
                     }
                     .buttonStyle(.plain)
@@ -81,6 +81,7 @@ struct StokGorunumu: View {
 
     private func urunKutusu(_ u: UrunTanimi, _ mevcut: Double) -> some View {
         let fiyat = depo.ayarlar.stockPrices[u.v] ?? 0
+        let rezerve = rezerveMiktar(depo.veri, urun: u.v, urunBirimi: Birim(rawValue: u.unit))
         return VStack(spacing: 5) {
             UrunGorseli(urun: u, boyut: 76, yaricap: 16)
             Text(u.temizAd).font(Yazi.kucukOrta).lineLimit(1).minimumScaleFactor(0.8)
@@ -89,13 +90,16 @@ struct StokGorunumu: View {
                 Image(systemName: "cube.box").font(.system(size: 10)).foregroundStyle(Renk.bal)
                 Text(miktar(mevcut, u.unit)).font(Yazi.kucukOrta).foregroundStyle(mevcut <= 0 ? Renk.metin3 : Renk.metin)
             }
+            if rezerve > 0 {
+                Text("+\(miktar(rezerve, u.unit)) rezerve").font(Yazi.minik).foregroundStyle(Renk.uyari).lineLimit(1).minimumScaleFactor(0.8)
+            }
             HStack(spacing: 4) {
                 Image(systemName: "turkishlirasign.circle").font(.system(size: 10)).foregroundStyle(Renk.bal)
                 Text(fiyat > 0 ? tl(max(0, mevcut) * fiyat) : "fiyat yok").font(Yazi.minik).foregroundStyle(Renk.metin2)
             }
         }
         .padding(8)
-        .frame(width: 112, height: 170)
+        .frame(width: 112, height: 184)
         .background(Renk.kart, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Renk.krem2))
         .accessibilityElement(children: .combine)
@@ -182,7 +186,7 @@ struct StokGorunumu: View {
                 .overlay(Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 11, weight: .bold)).foregroundStyle(Renk.ormanKoyu))
             VStack(alignment: .leading, spacing: 2) {
                 Text("Otomatik stok").font(Yazi.kucukOrta).foregroundStyle(Renk.acikBal)
-                Text("Hasat ve stok girişleri stoğu artırır; satış, hediye ve zekat kayıtları stoktan kendiliğinden düşer.")
+                Text("Hasat ve stok girişleri stoğu artırır; satış, hediye ve zekat kayıtları stoktan kendiliğinden düşer. Ön siparişler teslim edilene dek \"rezerve\" görünür; ürün kartındaki miktar satılabilir stoktur.")
                     .font(Yazi.etiket).foregroundStyle(Color(white: 0.88))
             }
         }
@@ -329,31 +333,65 @@ struct StokGirisFormu: View {
     }
 }
 
-/// Zekat: her ürünün mevcut stoğunun %10'u (web showZekatModal).
+/// Zekat (Bal Defterim kuralı): aktif sezonda girilen hasadın %10'u (öşür). Devreden/başlangıç stoğu dahil edilmez;
+/// "Zekat" ödemesiyle girilen satışlar verilen sayılıp düşülür. Ürün formunda "Zekat hesabına dahil" kapalıysa gösterilmez.
+private struct ZekatSatiri: Identifiable {
+    let u: UrunTanimi
+    let z: ZekatDurumu
+    var id: String { u.v }
+}
+
 struct ZekatSayfasi: View {
     @Environment(VeriDeposu.self) private var depo
     @Environment(\.dismiss) private var kapat
+    @State private var zekatVer = false
     var body: some View {
+        let aralik = depo.aktifAralik
+        let satirlar = depo.urunler.filter { $0.zakat != false }.compactMap { u -> ZekatSatiri? in
+            guard let b = Birim(rawValue: u.unit) else { return nil }
+            let z = zekatDurumu(depo.veri, urun: u.v, urunBirimi: b, aralik: aralik)
+            return z.hasat > 0 || z.verilen > 0 ? ZekatSatiri(u: u, z: z) : nil
+        }
         NavigationStack {
             List {
-                Section(footer: Text("Zekat, ürünün güncel stoğunun %10'u olarak hesaplanır.")) {
-                    ForEach(depo.urunler, id: \.v) { u in
-                        let m = stokSeviyesi(depo.veri, urun: u.v)
-                        if m > 0 {
-                            HStack {
-                                UrunGorseli(urun: u, boyut: 36, yaricap: 9)
-                                VStack(alignment: .leading) { Text(u.temizAd); Text("Mevcut \(miktar(m, u.unit))").font(.caption).foregroundStyle(.secondary) }
-                                Spacer()
-                                Text(miktar(zekatMiktari(m), u.unit)).font(.headline)
+                if satirlar.isEmpty {
+                    Text("Bu sezon zekata tabi hasat girişi yok.").foregroundStyle(.secondary)
+                }
+                ForEach(satirlar) { satir in
+                    let u = satir.u, z = satir.z
+                    Section {
+                        HStack {
+                            UrunGorseli(urun: u, boyut: 40, yaricap: 10)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(u.temizAd).font(Yazi.govdeOrta)
+                                Text("Sezon hasadı \(miktar(z.hasat, u.unit))").font(Yazi.etiket).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(z.kalan > 0 ? miktar(z.kalan, u.unit) : "Verildi ✓").font(Yazi.nunito(18, .bold))
+                                    .foregroundStyle(z.kalan > 0 ? Renk.metin : Renk.iyi)
+                                Text(z.kalan > 0 ? "verilecek" : "tamamı").font(Yazi.minik).foregroundStyle(.secondary)
                             }
                         }
+                        HStack {
+                            Text("Zekat (%10) \(miktar(z.borc, u.unit))")
+                            Spacer()
+                            Text("Verilen \(miktar(z.verilen, u.unit))").foregroundStyle(Renk.iyi)
+                        }
+                        .font(Yazi.kucuk)
                     }
+                }
+                Section {
+                    Button { zekatVer = true } label: { Label("Zekat verdim, kaydet", systemImage: "moon.stars") }
+                } footer: {
+                    Text("Zekat, sezonda girilen hasadın %10'udur (öşür). Önceki sezondan devreden ve başlangıç stoğu dahil edilmez. Verdiğin zekatı ödeme türü \"Zekat\" olan bir satış olarak kaydet; stoktan düşer, burada verilen olarak görünür.")
                 }
             }
             .navigationTitle("Zekat")
             .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } } }
+            .sheet(isPresented: $zekatVer) { SatisFormu(satisId: nil, varsayilanOdeme: "zekat") }
         }
     }
 }
@@ -370,10 +408,12 @@ struct StokRaporuSayfasi: View {
                     let b = u?.unit ?? ""
                     Section {
                         satir("Toplam giriş", miktar(r.giris, b))
+                        let rz = rezerveMiktar(depo.veri, urun: r.urun, urunBirimi: Birim(rawValue: b))
                         satir("Satış", "\(miktar(r.satisMiktar, b)) · \(tl(r.satisTutar))")
                         if r.hediye > 0 { satir("Hediye", miktar(r.hediye, b)) }
                         if r.zekat > 0 { satir("Zekat", miktar(r.zekat, b)) }
-                        satir("Mevcut", miktar(r.mevcut, b)).bold()
+                        if rz > 0 { satir("Rezerve (ön sipariş)", miktar(rz, b)) }
+                        satir(rz > 0 ? "Satılabilir" : "Mevcut", miktar(r.mevcut, b)).bold()
                     } header: {
                         HStack { UrunGorseli(urun: u, boyut: 24, yaricap: 6); Text(u?.temizAd ?? r.urun) }
                     }
@@ -382,7 +422,10 @@ struct StokRaporuSayfasi: View {
             .navigationTitle("Stok Raporu")
             .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } } }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } }
+                ToolbarItem(placement: .topBarLeading) { RaporPaylasDugmesi() }
+            }
         }
     }
     private func satir(_ a: String, _ b: String) -> some View { HStack { Text(a); Spacer(); Text(b).foregroundStyle(.secondary) } }
@@ -421,7 +464,10 @@ struct SatisRaporuSayfasi: View {
             .navigationTitle("Satış Raporu")
             .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } } }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } }
+                ToolbarItem(placement: .topBarLeading) { RaporPaylasDugmesi() }
+            }
         }
     }
 }

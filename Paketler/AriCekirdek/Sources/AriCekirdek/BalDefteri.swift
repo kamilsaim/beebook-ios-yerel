@@ -17,7 +17,7 @@ public func zekatDurumu(_ v: BBVeri, urun: String, urunBirimi: Birim, aralik: Se
     var hasat = 0.0
     for k in v.stokKayitlari where k.product == urun && k.action == "in" && sezonda(k.date, aralik) {
         let not = (k.note ?? "").lowercased(with: Locale(identifier: "tr_TR"))
-        if not.contains("devir") || not.contains("başlangıç stoğu") { continue }
+        if not.contains("devir") || not.contains("devri") || not.contains("başlangıç stoğu") { continue }
         hasat += cevrilmis(k.amount ?? 0, k.unit, urunBirimi)
     }
     var verilen = 0.0

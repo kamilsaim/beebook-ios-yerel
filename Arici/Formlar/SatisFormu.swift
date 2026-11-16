@@ -16,6 +16,7 @@ struct SatisFormu: View {
     @Environment(VeriDeposu.self) private var depo
     @Environment(\.dismiss) private var kapat
     let satisId: String?
+    var varsayilanOdeme: String? = nil
 
     @State private var musteri = ""
     @State private var telefon = ""
@@ -26,6 +27,7 @@ struct SatisFormu: View {
     @State private var onSiparis = false
     @State private var not = ""
     @State private var yuklendi = false
+    @State private var rehber = false
 
     private var urunler: [UrunTanimi] { depo.urunler }
     private var ucretsiz: Bool { odeme == "hediye" || odeme == "zekat" }
@@ -34,7 +36,16 @@ struct SatisFormu: View {
         NavigationStack {
             Form {
                 Section("Müşteri") {
-                    TextField("Ad", text: $musteri).textInputAutocapitalization(.words)
+                    HStack {
+                        TextField("Ad", text: $musteri).textInputAutocapitalization(.words)
+                        Button { rehber = true } label: { Label("Rehber", systemImage: "person.crop.circle.badge.plus") }
+                            .buttonStyle(.bordered).tint(Renk.orman2)
+                            .accessibilityLabel("Rehberden kişi seç")
+                    }
+                    .background(RehberSecici(acik: $rehber) { ad, tel in
+                        musteri = ad
+                        if let tel, !tel.isEmpty { telefon = tel }
+                    }.frame(width: 0, height: 0))
                     if !oneriler.isEmpty {
                         ScrollView(.horizontal) {
                             HStack { ForEach(oneriler, id: \.self) { o in Button(o) { musteriSec(o) }.buttonStyle(.bordered).tint(Renk.orman2) } }
@@ -120,6 +131,7 @@ struct SatisFormu: View {
     private func yukle() {
         guard !yuklendi else { return }
         yuklendi = true
+        if satisId == nil, let v = varsayilanOdeme { odeme = v }
         if let s = depo.veri.satislar.first(where: { $0.id == satisId }) {
             musteri = s.customer ?? ""; telefon = s.phone ?? ""; tarih = isoTarih(s.date) ?? Date()
             odeme = s.payment ?? "paid"; odenen = s.paidAmount.map { String($0) } ?? ""

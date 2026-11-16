@@ -38,6 +38,7 @@ struct SatisEkrani: View {
     @State private var rapor = false
     @State private var silinecek: MusteriKarti?
     @State private var odemeAlinacak: MusteriKarti?
+    @State private var gecmis: String?
     @Environment(\.openURL) private var ac
 
     var body: some View {
@@ -76,6 +77,7 @@ struct SatisEkrani: View {
         .sheet(isPresented: $yeniSatis) { SatisFormu(satisId: nil) }
         .sheet(item: Binding(get: { duzenlenen.map { KimlikKutusu(id: $0) } }, set: { duzenlenen = $0?.id })) { SatisFormu(satisId: $0.id) }
         .sheet(isPresented: $rapor) { SatisRaporuSayfasi() }
+        .sheet(item: Binding(get: { gecmis.map { KimlikKutusu(id: $0) } }, set: { gecmis = $0?.id })) { MusteriGecmisiSayfasi(musteri: $0.id) }
         .confirmationDialog("\(silinecek?.musteri ?? "") satışı silinsin mi?", isPresented: Binding(get: { silinecek != nil }, set: { if !$0 { silinecek = nil } }), titleVisibility: .visible) {
             Button("Sil", role: .destructive) { if let k = silinecek { sil(k) }; silinecek = nil }
         } message: { Text("Bağlı stok çıkışı da silinir.") }
@@ -145,7 +147,11 @@ struct SatisEkrani: View {
         ForEach(gosterilen) { k in
             MusteriKartiGorunumu(kart: k, urunler: depo.urunler)
                 .contentShape(Rectangle())
-                .onTapGesture { duzenlenen = k.satirlar.first?.id }
+                .onTapGesture { gecmis = k.musteri }
+                .contextMenu {
+                    Button { duzenlenen = k.satirlar.first?.id } label: { Label("Satışı düzenle", systemImage: "pencil") }
+                    Button { gecmis = k.musteri } label: { Label("Müşteri geçmişi", systemImage: "clock.arrow.circlepath") }
+                }
                 .listRowInsets(EdgeInsets(top: 10, leading: Olcu.kenar, bottom: 0, trailing: Olcu.kenar))
                 .listRowBackground(Color.clear).listRowSeparator(.hidden)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -165,7 +171,8 @@ struct SatisEkrani: View {
                 }
         }
         if !gosterilen.isEmpty {
-            Text("Sola kaydır: teslim et, ödeme al, sil · Sağa kaydır: ara, WhatsApp")
+            Text("Dokun: müşteri geçmişi · Basılı tut: düzenle\nSola kaydır: teslim et, ödeme al, sil · Sağa kaydır: ara, WhatsApp")
+                .multilineTextAlignment(.center)
                 .font(Yazi.etiket).foregroundStyle(Color(white: 0.7)).frame(maxWidth: .infinity)
                 .listRowBackground(Color.clear).listRowSeparator(.hidden)
         }
