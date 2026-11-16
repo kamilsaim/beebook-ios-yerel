@@ -58,8 +58,8 @@ jobs:
           mkdir -p goruntuler
           xcrun simctl install "$UDID" build/Build/Products/Debug-iphonesimulator/Arici.app
           for E in $EKRANLAR; do
-            xcrun simctl terminate "$UDID" com.kamilsaim.arici || true
-            xcrun simctl launch "$UDID" com.kamilsaim.arici -ornekVeri -sekme "$E"
+            xcrun simctl terminate "$UDID" com.kamilsaim.beebook || true
+            xcrun simctl launch "$UDID" com.kamilsaim.beebook -ornekVeri -sekme "$E"
             sleep 6
             xcrun simctl io "$UDID" screenshot "goruntuler/$E.png"
           done

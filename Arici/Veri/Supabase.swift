@@ -5,7 +5,7 @@ import Supabase
 enum Sabitler {
     static let supabaseURL = URL(string: "https://pdxnpnlwrtswwifevlil.supabase.co")!
     static let supabaseAnahtar = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkeG5wbmx3cnRzd3dpZmV2bGlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MTk3MDIsImV4cCI6MjA5NDM5NTcwMn0.y5-rmssEre3GnaxenCMoo78XK69aIyR3P2XyGeMiU_g"
-    static let girisDonusu = URL(string: "com.kamilsaim.arici://auth-callback")!
+    static let girisDonusu = URL(string: "com.kamilsaim.beebook://auth-callback")!
     static let gizlilik = URL(string: "https://kamilsaim.github.io/beebook/gizlilik-politikasi.html")!
     static let urunBucket = "beebook-urun"
     static let silmeFonksiyonu = "beebook-delete-account"

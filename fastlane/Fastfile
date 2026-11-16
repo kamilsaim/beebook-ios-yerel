@@ -3,7 +3,7 @@
 #       → elle imzaya çevir → arşivle → TestFlight'a yükle.
 default_platform(:ios)
 
-PAKET = "com.kamilsaim.arici"
+PAKET = "com.kamilsaim.beebook"
 TAKIM = "NBTXFU47EV"
 
 platform :ios do

@@ -38,7 +38,7 @@ jobs:
         # Yeni App Store kaydı: derleme numarası 1'den büyür, her yüklemede artar.
         run: |
           PLIST=Arici/Info.plist
-          DERLEME=$(( GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT ))
+          DERLEME=$(( 100 + GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT ))  # eski Capacitor kaydı 2.6.11 (12) — üstünde kalsın
           plutil -replace CFBundleShortVersionString -string "$SURUM" "$PLIST"
           plutil -replace CFBundleVersion -string "$DERLEME" "$PLIST"
           echo "Sürüm $SURUM, derleme $DERLEME"

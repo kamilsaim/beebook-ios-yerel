@@ -1,4 +1,4 @@
-# BeeBook iOS — yerel SwiftUI uygulaması (com.kamilsaim.arici)
+# BeeBook iOS — yerel SwiftUI uygulaması (com.kamilsaim.beebook)
 
 Beebook web'in (aricilik.html) yerel iPhone sürümü. Aynı Supabase `user_data` satırını kullanır, web'le kayıt bazında eşitlenir.
 
