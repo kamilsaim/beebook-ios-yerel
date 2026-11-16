@@ -5,9 +5,10 @@ import SwiftUI
 struct AnaAriEkrani: View {
     @Environment(VeriDeposu.self) private var depo
     @State private var yeniSeri = false
-    @State private var duzenlenen: String?
+    @State private var yol = NavigationPath()
 
     var body: some View {
+        NavigationStack(path: $yol) {
         SekmeKaydirma(arka: "SayfaCicek", koyuluk: 0.95) {
             ManzaraBasligi {
                 HStack { Marka(kucuk: true); Spacer(); CamDugme(simge: "plus") { yeniSeri = true }.accessibilityLabel("Yeni seri") }
@@ -22,14 +23,16 @@ struct AnaAriEkrani: View {
                     BosDurum(simge: "crown", baslik: "Henüz üretim serisi yok", alt: "Sağ üstteki + ile larva transferini kaydet.")
                 }
                 ForEach(seriler, id: \.id) { s in
-                    SeriKarti(seri: s).onTapGesture { duzenlenen = s.id }
+                    SeriKarti(seri: s).contentShape(Rectangle()).onTapGesture { yol.append(s.id) }
                 }
             }
             .padding(.horizontal, Olcu.kenar)
             .padding(.top, 12)
         }
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationDestination(for: String.self) { id in SeriDetayi(seriId: id) }
+        }
         .sheet(isPresented: $yeniSeri) { SeriFormu(seriId: nil) }
-        .sheet(item: Binding(get: { duzenlenen.map { KimlikKutusu(id: $0) } }, set: { duzenlenen = $0?.id })) { k in SeriFormu(seriId: k.id) }
     }
 }
 
@@ -88,8 +91,6 @@ struct SeriKarti: View {
     @Environment(VeriDeposu.self) private var depo
     let seri: AnaSeri
     var body: some View {
-        let adimlar = seri.transfer.map { gelisimTakvimi(transfer: $0) } ?? []
-        let aktif = seri.transfer.map { aktifAdimIndeksi(transfer: $0, bugun: bugunISO()) } ?? -1
         let m = seri.memeler
         Kart {
             HStack(spacing: 12) {
@@ -103,36 +104,13 @@ struct SeriKarti: View {
                     if let t = seri.transfer { Text("Transfer: \(kisaTarih(t))").font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
                 }
                 Spacer()
-                Rozet(metin: seri.status == "completed" ? "Tamamlandı" : seri.status == "failed" ? "Başarısız" : "Aktif",
-                      tur: seri.status == "failed" ? .kotu : seri.status == "completed" ? .notr : .iyi)
-            }
-            if !adimlar.isEmpty {
-                ZStack(alignment: .top) {
-                    GeometryReader { g in
-                        Capsule().fill(Renk.krem2).frame(height: 3).offset(y: 13).padding(.horizontal, 20)
-                        Capsule().fill(Renk.iyi)
-                            .frame(width: max(0, (g.size.width - 40) * CGFloat(max(0, aktif)) / CGFloat(adimlar.count - 1)), height: 3)
-                            .offset(x: 20, y: 13)
-                    }
-                    HStack(alignment: .top) {
-                        ForEach(Array(adimlar.enumerated()), id: \.offset) { i, a in
-                            VStack(spacing: 4) {
-                                ZStack {
-                                    Circle().fill(i < aktif ? Renk.iyi : i == aktif ? Renk.bal : Renk.kart).frame(width: 28, height: 28)
-                                        .overlay(Circle().strokeBorder(i <= aktif ? .clear : Renk.krem2, lineWidth: 2))
-                                        .shadow(color: i == aktif ? Renk.bal.opacity(0.5) : .clear, radius: 5)
-                                    if i < aktif { Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)).foregroundStyle(.white) }
-                                    else { Text("\(i + 1)").font(Yazi.minik).foregroundStyle(i == aktif ? Renk.orman : Renk.metin3) }
-                                }
-                                Text(a.ad).font(Yazi.minik).foregroundStyle(Renk.metin2)
-                                Text(kisaTarih(a.tarih)).font(Yazi.nunito(10)).foregroundStyle(Renk.metin3)
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                    }
+                VStack(alignment: .trailing, spacing: 6) {
+                    Rozet(metin: seri.status == "completed" ? "Tamamlandı" : seri.status == "failed" ? "Başarısız" : "Aktif",
+                          tur: seri.status == "failed" ? .kotu : seri.status == "completed" ? .notr : .iyi)
+                    Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Renk.metin3)
                 }
-                .frame(height: 70)
             }
+            GelisimSeridi(seri: seri)
             if !m.isEmpty {
                 HStack(spacing: 8) {
                     sayac("\(m.filter { $0.status == "kovana_aktarildi" }.count)", "Kovana", Renk.iyi)

@@ -134,7 +134,7 @@ struct SatisFormu: View {
         if satisId == nil, let v = varsayilanOdeme { odeme = v }
         if let s = depo.veri.satislar.first(where: { $0.id == satisId }) {
             musteri = s.customer ?? ""; telefon = s.phone ?? ""; tarih = isoTarih(s.date) ?? Date()
-            odeme = s.payment ?? "paid"; odenen = s.paidAmount.map { String($0) } ?? ""
+            odeme = s.payment ?? "paid"; odenen = s.paidAmount.map { $0 == $0.rounded() ? String(Int($0)) : String($0).replacingOccurrences(of: ".", with: ",") } ?? ""
             onSiparis = s.orderStatus == "preorder"; not = s.note ?? ""
             // Stok ürünü olmayan eski satış (arı/ana arı/diğer): türü korunur, product yazılmaz
             let uid = satisStokUrunu(s) ?? "tur:" + (s.type ?? "other")

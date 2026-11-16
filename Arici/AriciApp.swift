@@ -26,7 +26,13 @@ struct AriciApp: App {
                 }
                 .onChange(of: sahne) { _, yeni in
                     switch yeni {
-                    case .background: Task { await depo.simdiGonder() }
+                    case .background:
+                        // iOS'tan kısa ek süre iste: bekleyen değişiklik gönderilmeden uygulama askıya alınmasın.
+                        let gorev = UIApplication.shared.beginBackgroundTask(withName: "eşitleme")
+                        Task {
+                            await depo.simdiGonder()
+                            UIApplication.shared.endBackgroundTask(gorev)
+                        }
                     case .active: Task { await depo.yukle() }
                     default: break
                     }

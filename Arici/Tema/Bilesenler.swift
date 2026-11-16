@@ -290,7 +290,7 @@ struct SimgeKutusu: View {
 extension View {
     /// Form/List sayfalarında siyah sistem arka planı yerine tam sayfa görselli arka plan.
     /// Sayfa (sheet) olarak açıldıysa sunum arka planını da ayarlar.
-    func formArkaplani() -> some View {
+    func formArkaplani(klavye: Bool = true) -> some View {
         self.scrollContentBackground(.hidden)
             .background(FormZemini())
             .presentationBackground { FormZemini() }
@@ -298,7 +298,14 @@ extension View {
             .environment(\.colorScheme, .light)
             .tint(Renk.orman2)
             .scrollDismissesKeyboard(.interactively)
-            .klavyeKapatici()
+            .toolbar {
+                if klavye {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button("Bitti") { klavyeyiKapat() }.font(Yazi.govdeOrta)
+                    }
+                }
+            }
     }
 
     /// Klavyenin üstüne "Bitti" düğmesi (NavigationStack içinde).

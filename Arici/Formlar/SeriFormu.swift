@@ -62,12 +62,12 @@ struct SeriFormu: View {
                 if seriId != nil { Section { Button("Seriyi sil", role: .destructive) { silOnay = true } } }
             }
             .navigationTitle(seriId == nil ? "Yeni Seri" : "Seri")
-            .formArkaplani()
+            .formArkaplani(klavye: false)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Kaydet") { memeListesiniGuncelle(); kaydet(); kapat() } }
-                ToolbarItem(placement: .keyboard) { Button("Bitti") { memeListesiniGuncelle(); UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) } }
+                ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Bitti") { memeListesiniGuncelle(); UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) } }
             }
             .confirmationDialog("Seri silinsin mi?", isPresented: $silOnay, titleVisibility: .visible) {
                 Button("Sil", role: .destructive) { depo.degistir { v in v.seriler = v.seriler.filter { $0.id != seriId } }; kapat() }

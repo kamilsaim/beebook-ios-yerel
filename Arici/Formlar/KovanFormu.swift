@@ -116,6 +116,7 @@ struct KovanFormu: View {
         guard let id = kovanId else { return }
         depo.degistir { v in
             v.kovanlar = v.kovanlar.filter { $0.id != id }
+            v.muayeneler = v.muayeneler.filter { $0.hiveId != id }
             if var lay = v.araziLayout, var p = lay["positions"]?.nesneDegeri {
                 p.removeValue(forKey: id)
                 lay["positions"] = .nesne(p)
