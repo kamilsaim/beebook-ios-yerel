@@ -76,7 +76,7 @@ struct HavaKarti: View {
                     Text("\(hava.derece)°").font(.system(size: 38, weight: .light)).monospacedDigit()
                     VStack(alignment: .leading, spacing: 2) {
                         Text(hava.durumMetni).font(Yazi.govdeOrta).foregroundStyle(.white)
-                        Text(hava.sehir).font(Yazi.kucuk).foregroundStyle(Color(white: 0.82))
+                        Text(hava.sehir + (hava.rakim.map { " · \($0) m" } ?? "")).font(Yazi.kucuk).foregroundStyle(Color(white: 0.82))
                     }
                     Spacer(minLength: 4)
                     VStack(alignment: .trailing, spacing: 2) {

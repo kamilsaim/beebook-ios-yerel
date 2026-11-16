@@ -13,6 +13,8 @@ struct HavaDurumu: Equatable, Codable {
     let ruzgar: Int
     let saatlik: [Saat]
     let gunluk: [Gun]
+    /// Arılığın (ayarlardaki şehir) deniz seviyesinden yüksekliği, metre.
+    var rakim: Int? = nil
 
     var durumMetni: String { HavaDurumu.metin(kod) }
     var simge: String { HavaDurumu.simge(kod) }
@@ -91,7 +93,8 @@ actor HavaServisi {
             enYuksek: gunluk.first?.enYuksek ?? 0,
             nem: Int(((c["relative_humidity_2m"] as? Double) ?? 0).rounded()),
             ruzgar: Int(((c["wind_speed_10m"] as? Double) ?? 0).rounded()),
-            saatlik: saatlik, gunluk: gunluk)
+            saatlik: saatlik, gunluk: gunluk,
+            rakim: ((w["elevation"] as? Double) ?? (ilk["elevation"] as? Double)).map { Int($0.rounded()) })
         onbellek = (sehir, Date(), hava)
         return hava
     }

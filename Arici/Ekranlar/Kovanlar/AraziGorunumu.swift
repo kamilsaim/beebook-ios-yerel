@@ -22,6 +22,7 @@ struct AraziGorunumu: View {
     @State private var surukle: (id: String, fark: CGSize)?
     @State private var olcek: CGFloat = 1
     @State private var bazOlcek: CGFloat = 1
+    @State private var rakim: Int?
 
     private let hucre: CGFloat = 72
 
@@ -78,6 +79,10 @@ struct AraziGorunumu: View {
             ustCubuk
         }
         .safeAreaInset(edge: .bottom) { altPanel(yerlesmemis) }
+        .task {
+            let sehir = (depo.ayarlar.city?.isEmpty == false ? depo.ayarlar.city : nil) ?? "Muğla"
+            rakim = try? await HavaServisi.paylasilan.getir(sehir: sehir).rakim
+        }
         .background(Renk.ormanKoyu)
     }
 
@@ -90,7 +95,11 @@ struct AraziGorunumu: View {
             }
             .accessibilityLabel("Kovan listesine dön")
             Spacer()
-            Text("Arazi").font(Yazi.logo(24)).shadow(color: .black.opacity(0.6), radius: 4)
+            VStack(spacing: 0) {
+                Text("Arazi").font(Yazi.logo(24))
+                if let rakim { Text("Rakım \(rakim) m").font(Yazi.etiket) }
+            }
+            .shadow(color: .black.opacity(0.6), radius: 4)
             Spacer()
             HStack(spacing: 0) {
                 Button { yakinlas(1 / 1.3) } label: { Image(systemName: "minus").frame(width: 42, height: 42) }
