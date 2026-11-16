@@ -151,7 +151,7 @@ struct AltCubuk: View {
                 // Petek (seçili sekme)
                 SeciliPetek()
                     .frame(width: petekBoyut.width, height: petekBoyut.height)
-                    .offset(x: merkez(durum.secili) - petekBoyut.width / 2, y: ince ? -9 : -13)
+                    .offset(x: merkez(durum.secili) - petekBoyut.width / 2, y: ince ? -4 : -6)
                     .animation(hareketiAzalt ? nil : .spring(response: 0.4, dampingFraction: 0.72), value: durum.secili)
                     .animation(.spring(response: 0.3, dampingFraction: 0.8), value: ince)
                     .allowsHitTesting(false)
@@ -171,7 +171,7 @@ struct AltCubuk: View {
                     .rotationEffect(.degrees(ucuyor ? (solaBakiyor ? -8 : 8) : 0))
                     .scaleEffect(ince ? 0.82 : 1)
                     .scaleEffect(x: 1, y: konuyor ? 0.94 : 1, anchor: .bottom)
-                    .offset(x: ariX - 22, y: (ince ? -42 : -50) + (ucuyor ? -14 : 0))
+                    .offset(x: ariX - 22, y: (ince ? -36 : -42) + (ucuyor ? -14 : 0))
                     .shadow(color: .black.opacity(0.4), radius: 3, y: 3)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
@@ -212,7 +212,7 @@ struct AltCubuk: View {
                 }
             }
             .foregroundStyle(secili ? Renk.seciliMetin : Color(red: 0.93, green: 0.96, blue: 0.95))
-            .offset(y: secili ? -6 : 0)
+            .offset(y: secili ? -2 : 0)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
             .overlay(alignment: .top) {

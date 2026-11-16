@@ -21,6 +21,7 @@ struct AnaSayfaEkrani: View {
                 OzetKartlari()
                 HizliErisim()
                 YapilacaklarKarti()
+                YapilanIslerKarti()
                 OzetRaporKarti()
                 AnaAriDikkatKarti()
             }
@@ -117,7 +118,12 @@ struct OzetKartlari: View {
         let gelir = satislar.reduce(0) { $0 + ($1.total ?? 0) }
         let bekleyen = bekleyenToplam(satislar: satislar)
         let haftaBasi = bugunISO(Calendar(identifier: .iso8601).dateInterval(of: .weekOfYear, for: Date())?.start ?? Date())
-        let haftaIsleri = depo.veri.isler.filter { ($0.dueDate ?? "") >= haftaBasi && ($0.dueDate ?? "") <= bugunISO() }
+        let bugun = bugunISO()
+        // Bu hafta: tarihi bu haftaya düşen işler + bu hafta yapıldı işaretlenenler (tarihsiz olanlar dahil).
+        let haftaIsleri = depo.veri.isler.filter { i in
+            let d = String((i.dueDate ?? "").prefix(10))
+            return (d >= haftaBasi && d <= bugun) || (i.done && i.yapildigiGun >= haftaBasi && i.yapildigiGun <= bugun)
+        }
         let yapilan = haftaIsleri.filter(\.done).count
         let stokDegeri = depo.urunler.reduce(0) { $0 + max(0, stokSeviyesi(depo.veri, urun: $1.v)) * (depo.ayarlar.stockPrices[$1.v] ?? 0) }
         VStack(spacing: 10) {

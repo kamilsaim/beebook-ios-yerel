@@ -135,7 +135,12 @@ struct YapilacaklarKarti: View {
             Button {
                 depo.degistir { v in
                     var l = v.isler
-                    if let k = l.firstIndex(where: { $0.id == i.id }) { l[k].done.toggle(); v.isler = l }
+                    if let k = l.firstIndex(where: { $0.id == i.id }) {
+                        l[k].done.toggle()
+                        // Ne zaman yapıldı: "Yapılan İşler" kartı bu tarihe göre sıralar (web alanı bilmez, korur).
+                        if l[k].done { l[k].ham["doneAt"] = .metin(bugunISO()) } else { l[k].ham.removeValue(forKey: "doneAt") }
+                        v.isler = l
+                    }
                 }
             } label: {
                 Image(systemName: i.done ? "checkmark.square.fill" : "square")

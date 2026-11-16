@@ -23,6 +23,9 @@ struct AraziGorunumu: View {
     @State private var olcek: CGFloat = 1
     @State private var bazOlcek: CGFloat = 1
     @State private var rakim: Int?
+    /// Toplu taşıma: seçili kovanlar birlikte sürüklenir.
+    @State private var secimModu = false
+    @State private var secili: Set<String> = []
 
     private let hucre: CGFloat = 72
 
@@ -31,24 +34,38 @@ struct AraziGorunumu: View {
         let konumlar = konumlariOku()
         let yerlesmemis = kovanlar.filter { konumlar[$0.id] == nil }
         let ekran = UIScreen.main.bounds.size
+        // Üst çubuğun altında kalmasın diye ekranda sabit ~130 pt boşluk (yakınlaştırmadan bağımsız).
+        let ust = 130 / olcek
         let genislik = max(ekran.width / olcek, (konumlar.values.map(\.x).max() ?? 0) + hucre + 60)
-        let yukseklik = max(ekran.height / olcek, (konumlar.values.map(\.y).max() ?? 0) + hucre + 220)
+        let yukseklik = max(ekran.height / olcek, (konumlar.values.map(\.y).max() ?? 0) + ust + hucre + 220)
 
         ZStack(alignment: .top) {
             ScrollView([.horizontal, .vertical]) {
                 ZStack(alignment: .topLeading) {
-                    Image("AraziZemin").resizable(resizingMode: .tile).frame(width: genislik, height: yukseklik)
+                    // Tek parça zemin (döşeme yapılmaz → ek yeri çizgisi olmaz).
+                    Image("AraziZemin").resizable().scaledToFill().frame(width: genislik, height: yukseklik).clipped()
                     ForEach(araLar(), id: \.id) { a in
                         RoundedRectangle(cornerRadius: 6).fill(Color(red: 0.55, green: 0.42, blue: 0.25).opacity(0.75))
-                            .frame(width: a.w, height: a.h).offset(x: a.x, y: a.y)
+                            .frame(width: a.w, height: a.h).offset(x: a.x, y: a.y + ust)
                     }
                     ForEach(kovanlar.filter { konumlar[$0.id] != nil }, id: \.id) { k in
                         let p = konumlar[k.id]!
-                        let f = surukle?.id == k.id ? surukle!.fark : .zero
+                        let grupta = secimModu && secili.contains(k.id)
+                        let f = surukle.map { $0.id == k.id || (grupta && secili.contains($0.id)) ? $0.fark : .zero } ?? .zero
                         AraziKovani(kovan: k, genislik: hucre)
-                            .offset(x: p.x + f.width, y: p.y + f.height + 90)
-                            .zIndex(surukle?.id == k.id ? 1 : 0)
-                            .onTapGesture { ac(k.id) }
+                            .overlay {
+                                if grupta {
+                                    RoundedRectangle(cornerRadius: 12).strokeBorder(Renk.bal, lineWidth: 3)
+                                        .shadow(color: Renk.bal, radius: 6).padding(-4)
+                                }
+                            }
+                            .offset(x: p.x + f.width, y: p.y + f.height + ust)
+                            .zIndex(f != .zero ? 1 : 0)
+                            .onTapGesture {
+                                if secimModu {
+                                    if secili.contains(k.id) { secili.remove(k.id) } else { secili.insert(k.id) }
+                                } else { ac(k.id) }
+                            }
                             .gesture(
                                 LongPressGesture(minimumDuration: 0.3)
                                     .sequenced(before: DragGesture())
@@ -56,7 +73,9 @@ struct AraziGorunumu: View {
                                         if case .second(true, let drag?) = d { surukle = (k.id, drag.translation) }
                                     }
                                     .onEnded { d in
-                                        if case .second(true, let drag?) = d { tasi(k.id, p, drag.translation) }
+                                        if case .second(true, let drag?) = d {
+                                            if grupta { grupTasi(konumlar, drag.translation) } else { tasi(k.id, p, drag.translation) }
+                                        }
                                         surukle = nil
                                     }
                             )
@@ -68,7 +87,7 @@ struct AraziGorunumu: View {
                 .frame(width: genislik * olcek, height: yukseklik * olcek, alignment: .topLeading)
             }
             .scrollIndicators(.hidden)
-            .background(Image("AraziZemin").resizable(resizingMode: .tile).ignoresSafeArea())
+            .background(Image("AraziZemin").resizable().scaledToFill().ignoresSafeArea())
             .ignoresSafeArea()
             .simultaneousGesture(
                 MagnifyGesture()
@@ -101,6 +120,14 @@ struct AraziGorunumu: View {
             }
             .shadow(color: .black.opacity(0.6), radius: 4)
             Spacer()
+            Button {
+                withAnimation(.snappy) { secimModu.toggle() }
+                if !secimModu { secili = [] }
+            } label: {
+                Image(systemName: secimModu ? "checkmark.circle.fill" : "checkmark.circle").frame(width: 42, height: 42)
+                    .background(secimModu ? AnyShapeStyle(Renk.bal.opacity(0.85)) : AnyShapeStyle(.ultraThinMaterial), in: Circle())
+            }
+            .accessibilityLabel(secimModu ? "Seçimi bitir" : "Kovan seç, birlikte taşı")
             HStack(spacing: 0) {
                 Button { yakinlas(1 / 1.3) } label: { Image(systemName: "minus").frame(width: 42, height: 42) }
                     .accessibilityLabel("Uzaklaş")
@@ -123,7 +150,18 @@ struct AraziGorunumu: View {
                 Spacer(minLength: 0)
                 Text("%\(Int((olcek * 100).rounded()))").font(Yazi.etiket).foregroundStyle(Color(white: 0.85))
             }
-            Text("Dokun: ayrıntı · Uzun basıp sürükle: taşı · İki parmak: yakınlaş").font(Yazi.etiket).foregroundStyle(Color(white: 0.85))
+            if secimModu {
+                HStack(spacing: 8) {
+                    Text("\(secili.count) kovan seçili").font(Yazi.kucukOrta)
+                    Spacer()
+                    Button("Tümünü seç") { secili = Set(depo.veri.kovanlar.filter { konumlariOku()[$0.id] != nil }.map(\.id)) }
+                    Button("Temizle") { secili = [] }.disabled(secili.isEmpty)
+                }
+                .font(Yazi.kucukOrta).foregroundStyle(Renk.bal)
+                Text("Dokun: seç/bırak · Seçili bir kovana uzun basıp sürükle: hepsi birlikte taşınır").font(Yazi.etiket).foregroundStyle(Color(white: 0.85))
+            } else {
+                Text("Dokun: ayrıntı · Uzun basıp sürükle: taşı · İki parmak: yakınlaş · ✓: toplu taşı").font(Yazi.etiket).foregroundStyle(Color(white: 0.85))
+            }
             if !yerlesmemis.isEmpty {
                 HStack {
                     Text("Yerleştirilmemiş (\(yerlesmemis.count))").font(Yazi.kucukOrta)
@@ -167,6 +205,15 @@ struct AraziGorunumu: View {
     private func tasi(_ id: String, _ p: CGPoint, _ f: CGSize) {
         let yeni = CGPoint(x: max(0, (p.x + f.width).rounded()), y: max(0, (p.y + f.height).rounded()))
         konumYaz([id: yeni])
+    }
+
+    /// Seçili kovanları birlikte kaydırır; grubun en solu/en üstü 0'ın altına inmez.
+    private func grupTasi(_ konumlar: [String: CGPoint], _ f: CGSize) {
+        let grup = konumlar.filter { secili.contains($0.key) }
+        guard !grup.isEmpty else { return }
+        let dx = max(f.width, -(grup.values.map(\.x).min() ?? 0))
+        let dy = max(f.height, -(grup.values.map(\.y).min() ?? 0))
+        konumYaz(grup.mapValues { CGPoint(x: ($0.x + dx).rounded(), y: ($0.y + dy).rounded()) })
     }
 
     /// Web araziAutoPlace: ızgara adımları hücre×1,6 / ×2,4, dolu yerleri atla.

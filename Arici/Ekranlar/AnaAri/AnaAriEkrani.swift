@@ -40,6 +40,7 @@ struct KimlikKutusu: Identifiable { let id: String }
 
 struct IrkOzeti: View {
     @Environment(VeriDeposu.self) private var depo
+    @State private var filtre: AnaFiltre?
     private let renkler: [Color] = [Renk.orman2, Renk.bal, Renk.bilgi, Color(red: 0.6, green: 0.42, blue: 0.23), Renk.mor, Color(red: 0.4, green: 0.6, blue: 0.5)]
 
     var body: some View {
@@ -64,7 +65,7 @@ struct IrkOzeti: View {
             .clipShape(Capsule())
             FlowLayout(aralik: 10) {
                 ForEach(Array(gruplar.enumerated()), id: \.offset) { i, gr in
-                    etiket(renkler[i % renkler.count], "\(gr.0) \(gr.1)")
+                    Button { filtre = AnaFiltre(irk: gr.0) } label: { etiket(renkler[i % renkler.count], "\(gr.0) \(gr.1)") }.buttonStyle(.plain)
                 }
                 if anasiz > 0 { etiket(Renk.kotu, "Anasız \(anasiz)") }
             }
@@ -77,9 +78,17 @@ struct IrkOzeti: View {
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 8)
                     .background(Renk.kart, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .contentShape(Rectangle())
+                    .onTapGesture { filtre = AnaFiltre(yil: y) }
                 }
             }
+            Button { filtre = AnaFiltre() } label: {
+                Label("Irka ve renge göre kovanları gör", systemImage: "line.3.horizontal.decrease.circle")
+                    .font(Yazi.kucukOrta).frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered).tint(Renk.orman2)
         }
+        .sheet(item: $filtre) { f in AnaFiltreSayfasi(irk: f.irk, yil: f.yil) }
     }
 
     private func etiket(_ r: Color, _ m: String) -> some View {
@@ -150,5 +159,86 @@ struct FlowLayout: Layout {
             s.place(at: CGPoint(x: x, y: y), proposal: .unspecified)
             x += b.width + aralik; satir = max(satir, b.height)
         }
+    }
+}
+
+struct AnaFiltre: Identifiable {
+    var irk: String? = nil
+    var yil: Int? = nil
+    var id: String { "\(irk ?? "-")|\(yil.map(String.init) ?? "-")" }
+}
+
+/// Kovanları ana arının ırkına ve rengine (yılına) göre süzer. Kovana dokun → ayrıntı.
+struct AnaFiltreSayfasi: View {
+    @Environment(VeriDeposu.self) private var depo
+    @Environment(\.dismiss) private var kapat
+    @State var irk: String?
+    @State var yil: Int?
+
+    var body: some View {
+        let anali = depo.veri.kovanlar.filter { !$0.arisiz && $0.queenStatus != "no" }
+        let irklar = Set(anali.map(irkAdi)).sorted()
+        let yillar = Set(anali.compactMap(\.anaYili)).sorted(by: >)
+        let liste = anali.filter { (irk == nil || irkAdi($0) == irk) && (yil == nil || $0.anaYili == yil) }
+            .sorted { $0.num.localizedStandardCompare($1.num) == .orderedAscending }
+        NavigationStack {
+            List {
+                Section("Irk") {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 8) {
+                            cip("Tümü", irk == nil) { irk = nil }
+                            ForEach(irklar, id: \.self) { r in cip(r, irk == r) { irk = irk == r ? nil : r } }
+                        }
+                    }
+                    .scrollIndicators(.hidden)
+                }
+                Section("Renk (ana yılı)") {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 8) {
+                            cip("Tümü", yil == nil) { yil = nil }
+                            ForEach(yillar, id: \.self) { y in
+                                cip(String(y), yil == y, renk: anaRengi(yil: y)) { yil = yil == y ? nil : y }
+                            }
+                        }
+                    }
+                    .scrollIndicators(.hidden)
+                }
+                Section("\(liste.count) kovan") {
+                    if liste.isEmpty { Text("Bu süzgeçle kovan yok.").foregroundStyle(.secondary) }
+                    ForEach(liste, id: \.id) { k in
+                        NavigationLink(value: k.id) {
+                            HStack(spacing: 10) {
+                                AnaNoktasi(renk: k.queenColor ?? k.anaYili.map { anaRengi(yil: $0) }, boyut: 14)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Kovan \(k.num)").font(Yazi.govdeOrta)
+                                    Text([irkAdi(k), k.anaYili.map(String.init), k.anaDurumMetni].compactMap { $0 }.joined(separator: " · "))
+                                        .font(Yazi.etiket).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Analar")
+            .formArkaplani()
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: String.self) { id in KovanDetayi(kovanId: id) }
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } } }
+        }
+    }
+
+    private func irkAdi(_ k: Kovan) -> String { k.race?.isEmpty == false ? k.race! : "Belirsiz" }
+
+    private func cip(_ ad: String, _ secili: Bool, renk: String? = nil, _ eylem: @escaping () -> Void) -> some View {
+        Button(action: eylem) {
+            HStack(spacing: 5) {
+                if let renk { AnaNoktasi(renk: renk, boyut: 10) }
+                Text(ad).font(Yazi.kucukOrta)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 7)
+            .background(secili ? Renk.orman2 : Renk.kart, in: Capsule())
+            .foregroundStyle(secili ? .white : Renk.metin)
+        }
+        .buttonStyle(.plain)
     }
 }
