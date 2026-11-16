@@ -8,8 +8,8 @@ struct AnaAriEkrani: View {
     @State private var duzenlenen: String?
 
     var body: some View {
-        SekmeKaydirma {
-            ManzaraBasligi(gorsel: "ArkaIsik") {
+        SekmeKaydirma(arka: "SayfaCicek", koyuluk: 0.95) {
+            ManzaraBasligi {
                 HStack { Marka(kucuk: true); Spacer(); CamDugme(simge: "plus") { yeniSeri = true }.accessibilityLabel("Yeni seri") }
                 BuyukBaslik(metin: "Ana Arı", alt: "Kovanlardaki analar ve üretim serileri")
             }

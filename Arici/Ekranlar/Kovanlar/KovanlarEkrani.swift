@@ -25,8 +25,8 @@ struct KovanlarEkrani: View {
 
     var body: some View {
         NavigationStack(path: $yol) {
-            SekmeKaydirma {
-                ManzaraBasligi(gorsel: "ArkaYesil") {
+            SekmeKaydirma(arka: "SayfaBokeh", koyuluk: 0.95) {
+                ManzaraBasligi {
                     HStack {
                         Marka(kucuk: true)
                         Spacer()
@@ -94,6 +94,16 @@ struct KovanlarEkrani: View {
         .onChange(of: menu.araziIstegi) { _, _ in yol = NavigationPath(); gorunum = .arazi }
     }
 
+    /// Kovan id → en son muayene (tarihe göre).
+    private var sonMuayeneler: [String: Muayene] {
+        var s: [String: Muayene] = [:]
+        for m in depo.veri.muayeneler {
+            guard let h = m.hiveId else { continue }
+            if (m.date ?? "") >= (s[h]?.date ?? "") { s[h] = m }
+        }
+        return s
+    }
+
     private var tumKovanlar: [Kovan] { depo.veri.kovanlar.sorted { $0.numara < $1.numara } }
 
     private var suzulmus: [Kovan] {
@@ -119,13 +129,14 @@ struct KovanlarEkrani: View {
         let hepsi = tumKovanlar
         VStack(spacing: 12) {
             HStack(spacing: 0) {
-                sayi("\(hepsi.count)", "Kovan", .white)
-                sayi("\(hepsi.filter { $0.queenStatus == "yes" }.count)", "Analı", Color(red: 0.62, green: 0.88, blue: 0.66))
-                sayi("\(hepsi.filter { ["bakire", "new"].contains($0.queenStatus ?? "") }.count)", "Bakire", Color(red: 0.56, green: 0.74, blue: 0.94))
-                sayi("\(hepsi.filter { $0.queenStatus == "no" }.count)", "Anasız", Color(red: 1, green: 0.62, blue: 0.56))
+                sayi("\(hepsi.count)", "Toplam", .white, simge: "archivebox.fill")
+                sayi("\(hepsi.filter { $0.saglikDurumu == .saglikli }.count)", "Sağlıklı", Color(red: 0.62, green: 0.88, blue: 0.66), simge: "checkmark.circle.fill")
+                sayi("\(hepsi.filter { $0.saglikDurumu == .dikkat }.count)", "Dikkat", Renk.acikBal, simge: "exclamationmark.triangle.fill")
+                sayi("\(hepsi.filter { $0.saglikDurumu == .mudahale }.count)", "Müdahale", Color(red: 1, green: 0.62, blue: 0.56), simge: "xmark.circle.fill")
             }
             .padding(.vertical, 10)
-            .background(Renk.orman.opacity(0.8), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(.ultraThinMaterial.opacity(0.5), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .background(Renk.ormanKoyu.opacity(0.6), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Renk.bal.opacity(0.25)))
 
             ScrollView(.horizontal) {
@@ -151,18 +162,22 @@ struct KovanlarEkrani: View {
                     }
                 }
             } else {
-                LazyVStack(spacing: 10) {
+                let sonMuayene = sonMuayeneler
+                LazyVStack(spacing: 12) {
                     ForEach(k, id: \.id) { kv in
-                        NavigationLink(value: kv.id) { KovanSatiri(kovan: kv) }.buttonStyle(.plain)
+                        NavigationLink(value: kv.id) { KovanSatiri(kovan: kv, sonMuayene: sonMuayene[kv.id]) }.buttonStyle(.plain)
                     }
                 }
             }
         }
     }
 
-    private func sayi(_ d: String, _ e: String, _ r: Color) -> some View {
+    private func sayi(_ d: String, _ e: String, _ r: Color, simge: String) -> some View {
         VStack(spacing: 1) {
-            Text(d).font(Yazi.nunito(20, .bold)).foregroundStyle(r)
+            HStack(spacing: 4) {
+                Image(systemName: simge).font(.system(size: 13)).foregroundStyle(r)
+                Text(d).font(Yazi.nunito(20, .bold)).foregroundStyle(.white)
+            }
             Text(e).font(Yazi.minik).foregroundStyle(Color(white: 0.78))
         }
         .frame(maxWidth: .infinity)
@@ -183,46 +198,93 @@ struct KovanlarEkrani: View {
     }
 }
 
+/// Kovan kartı (yenilogoo/kovandetay): büyük görsel, tip + sağlık rozeti, 2×2 bilgi (ana, yavru, güç, son kontrol).
 struct KovanSatiri: View {
     let kovan: Kovan
+    var sonMuayene: Muayene? = nil
+
     var body: some View {
         HStack(spacing: 10) {
-            Image(kovan.gorselAdi).resizable().scaledToFit().frame(width: 76, height: 76)
+            Image(kovan.gorselAdi).resizable().scaledToFit()
+                .frame(width: 92, height: 104)
                 .grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.6 : 1)
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 6) {
-                    Text("Kovan \(kovan.num)").font(Yazi.nunito(17, .bold))
-                    Rozet(metin: [kovan.type, kovan.katSayisi > 1 ? "\(kovan.katSayisi) kat" : nil].compactMap { $0 }.joined(separator: " · "))
+                .background(alignment: .bottom) {
+                    Ellipse().fill(Color(red: 0.55, green: 0.7, blue: 0.35).opacity(kovan.arisiz ? 0 : 0.35))
+                        .frame(width: 90, height: 18).blur(radius: 5)
+                }
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Kovan \(kovan.num)").font(Yazi.nunito(19, .bold)).lineLimit(1)
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Renk.metin3)
                 }
                 HStack(spacing: 6) {
-                    if kovan.sorunlu { Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Renk.kotu) }
-                    else if kovan.anaNoktasiGoster { AnaNoktasi(renk: kovan.queenColor) }
-                    Text(kovan.anaDurumMetni).foregroundStyle(kovan.sorunlu ? Renk.kotu : ["bakire", "new"].contains(kovan.queenStatus ?? "") ? Renk.bilgi : Renk.metin)
-                    if let r = kovan.race, !r.isEmpty {
-                        Text("·").foregroundStyle(Renk.metin3)
-                        Text([r, kovan.generation].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")).foregroundStyle(Renk.orman2)
+                    if let t = kovan.type, !t.isEmpty {
+                        Rozet(metin: kovan.katSayisi > 1 ? "\(t) · \(kovan.katSayisi) kat" : t)
+                    }
+                    saglikRozeti
+                }
+                Divider().overlay(Renk.krem2)
+                Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 5) {
+                    GridRow {
+                        bilgi("crown", "Ana arı", anaBilgisi, nokta: kovan.anaNoktasiGoster)
+                        bilgi("circle.hexagongrid", "Yavru", yavru)
+                    }
+                    GridRow {
+                        bilgi("bolt.heart", "Koloni gücü", guc)
+                        bilgi("calendar", "Son kontrol", sonMuayene?.date.map { kisaTarih($0) } ?? "—")
                     }
                 }
-                .font(Yazi.kucukOrta)
-                Text(altSatir).font(Yazi.etiket).foregroundStyle(Renk.metin3).lineLimit(1)
             }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Renk.metin3)
         }
-        .padding(.vertical, 8).padding(.leading, 6).padding(.trailing, 12)
+        .padding(.vertical, 10).padding(.leading, 6).padding(.trailing, 12)
         .kovanKartiStili(kovan, yaricap: Olcu.kartYaricap)
         .accessibilityElement(children: .combine)
     }
 
-    private var altSatir: String {
-        var p: [String] = []
-        if let y = kovan.year, !y.isEmpty, kovan.anaNoktasiGoster {
-            p.append(kovan.yasliAna ? "\(y) anası · 2+ yaşında" : "\(y) anası")
+    @ViewBuilder
+    private var saglikRozeti: some View {
+        switch kovan.saglikDurumu {
+        case .saglikli: Rozet(metin: "Sağlıklı", tur: .iyi)
+        case .dikkat: Rozet(metin: kovan.yasliAna ? "Yaşlı ana" : kovan.anaDurumMetni, tur: .uyari)
+        case .mudahale: Rozet(metin: "Ana yok", tur: .kotu)
+        case .arisiz: Rozet(metin: "Arısız")
         }
-        if let f = kovan.frames, f > 0 { p.append("\(Int(f)) çerçeve") }
-        if let g = kovan.gucMetni { p.append(g) }
-        if let n = kovan.notes, !n.isEmpty { p.append(n) }
-        return p.joined(separator: " · ")
+    }
+
+    private var anaBilgisi: String {
+        guard kovan.anaNoktasiGoster else { return kovan.anaDurumMetni }
+        var p: [String] = []
+        if let y = kovan.anaYili {
+            let yas = Calendar.current.component(.year, from: Date()) - y
+            p.append(yas <= 0 ? "\(y) · bu yıl" : "\(y) · \(yas) yaş")
+        }
+        if let r = kovan.race, !r.isEmpty { p.append(r) }
+        return p.isEmpty ? kovan.anaDurumMetni : p.joined(separator: " · ")
+    }
+
+    private var guc: String {
+        if let s = sonMuayene?.strength, let g = Int(s) { return g >= 4 ? "Güçlü" : g == 3 ? "Orta" : "Zayıf" }
+        return kovan.gucMetni ?? (kovan.frames.map { "\(Int($0)) çerçeve" } ?? "—")
+    }
+
+    private var yavru: String {
+        guard let b = sonMuayene?.brood else { return "—" }
+        return ["duzenli": "Düzenli", "seyrek": "Seyrek", "yok": "Yok"][b] ?? b
+    }
+
+    private func bilgi(_ simge: String, _ baslik: String, _ deger: String, nokta: Bool = false) -> some View {
+        HStack(alignment: .top, spacing: 5) {
+            Image(systemName: simge).font(.system(size: 12)).foregroundStyle(Renk.bal).frame(width: 15)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(baslik).font(Yazi.minik).foregroundStyle(Renk.metin3)
+                HStack(spacing: 4) {
+                    if nokta { AnaNoktasi(renk: kovan.queenColor, boyut: 7) }
+                    Text(deger).font(Yazi.kucukOrta).lineLimit(1).minimumScaleFactor(0.8)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

@@ -120,7 +120,8 @@ def ari_katmanlari():
 
 
 def amblem():
-    logo = Image.open(bul('*.png', os.path.join(ARICILIK, 'yenilogoo'))).convert('RGBA')
+    # Klasöre yeni görseller eklendi: logo dosyası adıyla seçilir.
+    logo = Image.open(bul('ChatGPT*11_10_51-1.png', os.path.join(ARICILIK, 'yenilogoo'))).convert('RGBA')
     return logo.crop((220, 75, 1035, 845))
 
 
@@ -198,7 +199,45 @@ def main():
     sut.thumbnail((250, 250), Image.LANCZOS)
     zemin.alpha_composite(sut, ((300 - sut.width) // 2, (300 - sut.height) // 2 + 8))
     gorsel_seti('UrunSut', zemin.convert('RGB'), 300)
+    yeni_varliklar()
     print('varlıklar üretildi:', len(os.listdir(VARLIK)) - 1)
+
+
+def simge_hazirla(yol, kenar=300):
+    """Şeffaf simge: boş kenarları kırp, kareye ortala (%6 pay), kenar px'e küçült."""
+    img = Image.open(yol).convert('RGBA')
+    kutu = img.getchannel('A').point(lambda a: 255 if a > 24 else 0).getbbox()
+    if kutu:
+        img = img.crop(kutu)
+    w, h = img.size
+    k = int(max(w, h) * 1.06)
+    kare = Image.new('RGBA', (k, k), (0, 0, 0, 0))
+    kare.paste(img, ((k - w) // 2, (k - h) // 2), img)
+    return kare.resize((kenar, kenar), Image.LANCZOS)
+
+
+def yeni_varliklar():
+    """16 Kas 2026: Kamil'in yenilogoo klasörüne koyduğu şeffaf simgeler ve tam sayfa arka planlar."""
+    k = os.path.join(ARICILIK, 'yenilogoo')
+    import unicodedata
+    adlar = {unicodedata.normalize('NFC', f): f for f in os.listdir(k)}
+
+    def yol(ad):  # Türkçe adlar diskte farklı Unicode biçiminde olabilir
+        return os.path.join(k, adlar[unicodedata.normalize('NFC', ad)])
+    simgeler = {
+        'SimgeAnaAri': 'anarı.png', 'SimgeArazi': 'arazisimge.png', 'SimgeAyarlar': 'ayarlar simge.png',
+        'SimgeEnvanter': 'envanter.png', 'SimgeGider': 'gider.png', 'SimgeHava': 'hava.png',
+        'SimgeRapor': 'rapor.png', 'SimgeSatis': 'satış.png', 'SimgeSezon': 'sezon.png',
+        'SimgeKovan': 'simgeler (1).png', 'SimgeAriSutu': 'simgeler (9).png', 'SimgeYedek': 'yedekle simge.png',
+    }
+    for ad, dosya in simgeler.items():
+        gorsel_seti(ad, simge_hazirla(yol(dosya)), 300)
+    arkalar = {
+        'SayfaManzara': 'arkaplan.png', 'SayfaCicek': 'arkaplan2.png', 'SayfaManzara2': 'arkaplan3.png',
+        'SayfaBokeh': 'arkaplan4.png', 'SayfaPetek': 'satıs arkaplan.png', 'AraziZemin': 'arazi.png',
+    }
+    for ad, dosya in arkalar.items():
+        gorsel_seti(ad, Image.open(yol(dosya)), 1300, jpeg=True)
 
 
 if __name__ == '__main__':

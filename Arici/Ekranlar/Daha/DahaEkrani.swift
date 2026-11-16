@@ -18,15 +18,15 @@ enum DahaSayfa: String, Hashable, CaseIterable {
     }
     var gorsel: String {
         switch self {
-        case .ariSutu: return "IkonAriSutu"
-        case .envanter: return "IkonEnvanter"
-        case .giderler: return "DurumDuzenle"
-        case .raporlar: return "IkonRaporlar"
-        case .sezonlar: return "IkonSezon"
-        case .hava: return "IkonHava"
-        case .yedek: return "IkonCevrimdisi"
-        case .arazi: return "IkonArazi"
-        case .ayarlar: return "DurumPasif"
+        case .ariSutu: return "SimgeAriSutu"
+        case .envanter: return "SimgeEnvanter"
+        case .giderler: return "SimgeGider"
+        case .raporlar: return "SimgeRapor"
+        case .sezonlar: return "SimgeSezon"
+        case .hava: return "SimgeHava"
+        case .yedek: return "SimgeYedek"
+        case .arazi: return "SimgeArazi"
+        case .ayarlar: return "SimgeAyarlar"
         }
     }
 }
@@ -53,8 +53,8 @@ struct DahaEkrani: View {
 
     var body: some View {
         NavigationStack(path: $yol) {
-            SekmeKaydirma {
-                ManzaraBasligi(gorsel: "ArkaDag") {
+            SekmeKaydirma(arka: "SayfaManzara2") {
+                ManzaraBasligi {
                     HStack { Marka(kucuk: true); Spacer() }
                     BuyukBaslik(metin: "Daha", alt: "Diğer bölümler ve ayarlar")
                 }
@@ -63,12 +63,8 @@ struct DahaEkrani: View {
                         Button {
                             if s == .arazi { menu.git(.kovanlar); menu.araziIstegi += 1 } else { yol.append(s) }
                         } label: {
-                            VStack(spacing: 6) {
-                                // Kaynak simgelerin en/boy oranı farklı: hepsi aynı kareye doldurulur, köşe koyulukları kırpılır.
-                                Image(s.gorsel).resizable().scaledToFill()
-                                    .frame(width: 88, height: 88)
-                                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                                    .shadow(color: Renk.bal.opacity(0.3), radius: 8)
+                            VStack(spacing: 10) {
+                                SimgeKutusu(ad: s.gorsel, boyut: 86)
                                 Text(s.ad).font(Yazi.kucukOrta).foregroundStyle(Renk.krem)
                             }
                         }

@@ -1,9 +1,11 @@
 import AriCekirdek
 import SwiftUI
 
-/// Satış › Stok: ürün kartları (kendi biriminde), ürün ekle (20 sınırı), stok girişi, zekat, rapor.
+/// Satış › Stok (yenilogoo/stokdetay): ürün stok özeti + toplam değer, son satışlar, hediye/zekat,
+/// otomatik stok hareketleri, aylık gider özeti. Ürün ekle (20 sınırı), stok girişi, zekat, rapor.
 struct StokGorunumu: View {
     @Environment(VeriDeposu.self) private var depo
+    var satislaraGit: () -> Void = {}
     @State private var urunForm: KimlikKutusu?
     @State private var yeniUrun = false
     @State private var giris = false
@@ -12,31 +14,21 @@ struct StokGorunumu: View {
 
     var body: some View {
         let urunler = depo.urunler
-        let eklenebilir = urunEklenebilir(depo.ayarlar)
         VStack(spacing: 12) {
             HStack(spacing: 8) {
                 kapsul("Stok girişi", "plus") { giris = true }
                 kapsul("Zekat", "moon.stars") { zekat = true }
                 kapsul("Rapor", "chart.bar") { rapor = true }
             }
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                ForEach(urunler, id: \.v) { u in
-                    Button { urunForm = KimlikKutusu(id: u.v) } label: { kart(u) }.buttonStyle(.plain)
-                }
-                Button { yeniUrun = true } label: {
-                    VStack(spacing: 6) {
-                        Image(systemName: "plus").font(.system(size: 30, weight: .medium))
-                        Text("Ürün ekle").font(Yazi.govdeOrta)
-                        Text(eklenebilir ? "kg · lt · gr · adet" : "En fazla \(ozelUrunSiniri) ürün").font(Yazi.etiket).opacity(0.8)
-                    }
-                    .foregroundStyle(Renk.bal)
-                    .frame(maxWidth: .infinity, minHeight: 190)
-                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Renk.bal.opacity(0.7), style: StrokeStyle(lineWidth: 2, dash: [6, 5])))
-                }
-                .buttonStyle(.plain)
-                .disabled(!eklenebilir)
-                .opacity(eklenebilir ? 1 : 0.5)
+            urunOzeti(urunler)
+            sonSatislar(urunler)
+            HStack(spacing: 10) {
+                hediyeZekat(baslik: "Hediye", simge: "gift", odeme: "hediye", urunler: urunler)
+                hediyeZekat(baslik: "Zekat", simge: "moon.stars", odeme: "zekat", urunler: urunler)
             }
+            otomatikBilgi
+            hareketler(urunler)
+            giderOzeti
         }
         .sheet(item: $urunForm) { UrunFormu(urunId: $0.id) }
         .sheet(isPresented: $yeniUrun) { UrunFormu(urunId: nil) }
@@ -45,25 +37,239 @@ struct StokGorunumu: View {
         .sheet(isPresented: $rapor) { StokRaporuSayfasi() }
     }
 
-    private func kart(_ u: UrunTanimi) -> some View {
-        let mevcut = stokSeviyesi(depo.veri, urun: u.v)
-        return VStack(alignment: .leading, spacing: 4) {
-            UrunGorseli(urun: u, boyut: 150, yaricap: 14)
-                .frame(maxWidth: .infinity).frame(height: 110).clipped()
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            HStack(spacing: 4) {
-                Text(u.temizAd).font(Yazi.govdeOrta).lineLimit(1)
-                if u.unit == "lt" || u.unit == "ml" { Rozet(metin: u.unit.uppercased(), tur: .bilgi) }
+    // MARK: Ürün stok özeti
+
+    private func urunOzeti(_ urunler: [UrunTanimi]) -> some View {
+        let toplam = urunler.reduce(0) { $0 + max(0, stokSeviyesi(depo.veri, urun: $1.v)) * (depo.ayarlar.stockPrices[$1.v] ?? 0) }
+        let eklenebilir = urunEklenebilir(depo.ayarlar)
+        return Kart {
+            HStack {
+                Image(systemName: "shippingbox.fill").foregroundStyle(Renk.bal)
+                Text("Ürün Stok Özeti").font(Yazi.kartBaslik)
+                Spacer(minLength: 4)
+                HStack(spacing: 5) {
+                    Text("Toplam").font(Yazi.minik).foregroundStyle(Color(white: 0.85))
+                    Text(tl(toplam)).font(Yazi.nunito(16, .bold)).foregroundStyle(Renk.bal)
+                }
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background(Renk.orman, in: Capsule())
             }
-            Text(miktar(mevcut, u.unit)).font(Yazi.nunito(21, .bold)).foregroundStyle(mevcut <= 0 ? Renk.metin3 : Renk.metin)
-            if let f = depo.ayarlar.stockPrices[u.v], f > 0 { Text("\(tl(f)) / \(u.unit)").font(Yazi.etiket).foregroundStyle(Renk.metin3) }
+            ScrollView(.horizontal) {
+                HStack(spacing: 10) {
+                    ForEach(urunler, id: \.v) { u in
+                        Button { urunForm = KimlikKutusu(id: u.v) } label: { urunKutusu(u, stokSeviyesi(depo.veri, urun: u.v)) }.buttonStyle(.plain)
+                    }
+                    Button { yeniUrun = true } label: {
+                        VStack(spacing: 6) {
+                            Image(systemName: "plus").font(.system(size: 26, weight: .medium))
+                            Text("Ürün ekle").font(Yazi.kucukOrta)
+                            Text(eklenebilir ? "kg · lt · gr · adet" : "En fazla \(ozelUrunSiniri)").font(Yazi.minik).opacity(0.8)
+                        }
+                        .foregroundStyle(Renk.orman2)
+                        .frame(width: 112, height: 170)
+                        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Renk.bal.opacity(0.8), style: StrokeStyle(lineWidth: 1.6, dash: [6, 5])))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!eklenebilir)
+                    .opacity(eklenebilir ? 1 : 0.5)
+                }
+                .padding(.vertical, 4)
+            }
+            .scrollIndicators(.hidden)
         }
-        .padding(10)
-        .background(Renk.krem, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func urunKutusu(_ u: UrunTanimi, _ mevcut: Double) -> some View {
+        let fiyat = depo.ayarlar.stockPrices[u.v] ?? 0
+        return VStack(spacing: 5) {
+            UrunGorseli(urun: u, boyut: 76, yaricap: 16)
+            Text(u.temizAd).font(Yazi.kucukOrta).lineLimit(1).minimumScaleFactor(0.8)
+            Divider().overlay(Renk.krem2)
+            HStack(spacing: 4) {
+                Image(systemName: "cube.box").font(.system(size: 10)).foregroundStyle(Renk.bal)
+                Text(miktar(mevcut, u.unit)).font(Yazi.kucukOrta).foregroundStyle(mevcut <= 0 ? Renk.metin3 : Renk.metin)
+            }
+            HStack(spacing: 4) {
+                Image(systemName: "turkishlirasign.circle").font(.system(size: 10)).foregroundStyle(Renk.bal)
+                Text(fiyat > 0 ? tl(max(0, mevcut) * fiyat) : "fiyat yok").font(Yazi.minik).foregroundStyle(Renk.metin2)
+            }
+        }
+        .padding(8)
+        .frame(width: 112, height: 170)
+        .background(Renk.kart, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Renk.krem2))
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: Son satışlar
+
+    private func sonSatislar(_ urunler: [UrunTanimi]) -> some View {
+        let son = depo.veri.satislar.sorted { ($0.date ?? "") > ($1.date ?? "") }.prefix(3)
+        return Kart {
+            HStack {
+                Image(systemName: "cart").foregroundStyle(Renk.orman2)
+                Text("Son Satışlar").font(Yazi.kartBaslik)
+                Spacer()
+                Button(action: satislaraGit) {
+                    HStack(spacing: 2) { Text("Tümünü gör"); Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)) }
+                }
+                .font(Yazi.etiket).foregroundStyle(Renk.orman2)
+            }
+            if son.isEmpty { Text("Henüz satış yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
+            ForEach(Array(son), id: \.id) { s in
+                HStack(spacing: 10) {
+                    UrunGorseli(urun: satisStokUrunu(s).flatMap { p in urunler.first { $0.v == p } }, boyut: 40, yaricap: 10)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(s.customer?.isEmpty == false ? s.customer! : "Müşteri").font(Yazi.kucukOrta).lineLimit(1)
+                            Text(s.date.map { kisaTarih($0) } ?? "").font(Yazi.minik).foregroundStyle(Renk.metin3)
+                        }
+                        Text(s.etiket(urunler: urunler)).font(Yazi.kucuk).foregroundStyle(Renk.metin2).lineLimit(1)
+                    }
+                    Spacer(minLength: 4)
+                    VStack(alignment: .trailing, spacing: 3) {
+                        odemeRozeti(s)
+                        Text(tl(s.total ?? 0)).font(Yazi.kucukOrta)
+                    }
+                }
+                .padding(.vertical, 3)
+                .overlay(alignment: .top) { Divider().overlay(Renk.krem2) }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func odemeRozeti(_ s: Satis) -> some View {
+        switch s.payment {
+        case "pending": Rozet(metin: "Bekliyor", tur: .uyari)
+        case "partial": Rozet(metin: "Kısmi", tur: .uyari)
+        case "hediye": Rozet(metin: "Hediye", tur: .mor)
+        case "zekat": Rozet(metin: "Zekat", tur: .bilgi)
+        default: Rozet(metin: "Ödendi", tur: .iyi)
+        }
+    }
+
+    // MARK: Hediye / zekat
+
+    private func hediyeZekat(baslik: String, simge: String, odeme: String, urunler: [UrunTanimi]) -> some View {
+        let kayitlar = depo.sezonda(depo.veri.satislar).filter { $0.payment == odeme }
+        let birimler = Dictionary(grouping: kayitlar, by: { $0.unit ?? "" })
+            .map { e in miktar(e.value.reduce(0) { $0 + ($1.qty ?? 0) }, e.key) }
+            .sorted()
+        return HStack(spacing: 10) {
+            Image(systemName: simge).font(.system(size: 20)).foregroundStyle(Renk.bal)
+                .frame(width: 40, height: 40).background(Renk.bal.opacity(0.15), in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(baslik) kayıtları").font(Yazi.kucukOrta)
+                Text(kayitlar.isEmpty ? "Bu sezon yok" : "\(kayitlar.count) kayıt · " + birimler.prefix(2).joined(separator: ", "))
+                    .font(Yazi.minik).foregroundStyle(Renk.metin2).lineLimit(2)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 74)
+        .background(Renk.krem, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .shadow(color: .black.opacity(0.22), radius: 9, y: 6)
         .foregroundStyle(Renk.metin)
         .accessibilityElement(children: .combine)
     }
+
+    // MARK: Otomatik stok + hareketler
+
+    private var otomatikBilgi: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "hexagon.fill").font(.system(size: 26)).foregroundStyle(Renk.bal)
+                .overlay(Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 11, weight: .bold)).foregroundStyle(Renk.ormanKoyu))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Otomatik stok").font(Yazi.kucukOrta).foregroundStyle(Renk.acikBal)
+                Text("Hasat ve stok girişleri stoğu artırır; satış, hediye ve zekat kayıtları stoktan kendiliğinden düşer.")
+                    .font(Yazi.etiket).foregroundStyle(Color(white: 0.88))
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.ultraThinMaterial.opacity(0.5), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(Renk.ormanKoyu.opacity(0.6), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Renk.bal.opacity(0.35)))
+    }
+
+    private func hareketler(_ urunler: [UrunTanimi]) -> some View {
+        let son = depo.veri.stokKayitlari.sorted { ($0.date ?? "") > ($1.date ?? "") }.prefix(6)
+        return Kart {
+            HStack {
+                Image(systemName: "arrow.left.arrow.right").foregroundStyle(Renk.orman2)
+                Text("Stok Hareketleri").font(Yazi.kartBaslik)
+                Spacer()
+                Button("Rapor") { rapor = true }.font(Yazi.etiket).foregroundStyle(Renk.orman2)
+            }
+            if son.isEmpty { Text("Henüz stok hareketi yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
+            ForEach(Array(son), id: \.id) { k in
+                let giris = k.action == "in"
+                let ad = urunler.first { $0.v == k.product }?.temizAd ?? (k.product ?? "Ürün")
+                HStack(spacing: 8) {
+                    Image(systemName: giris ? "arrow.up" : "arrow.down").font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(giris ? Renk.iyi : Renk.kotu)
+                        .frame(width: 26, height: 26).background((giris ? Renk.iyi : Renk.kotu).opacity(0.14), in: Circle())
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(ad + " · " + (giris ? (k.milkId != nil ? "Hasat" : "Giriş") : (k.saleId != nil ? "Satış" : "Çıkış")))
+                            .font(Yazi.kucukOrta).lineLimit(1)
+                        Text([k.date.map { kisaTarih($0) }, k.note].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
+                            .font(Yazi.minik).foregroundStyle(Renk.metin3).lineLimit(1)
+                    }
+                    Spacer(minLength: 4)
+                    Text((giris ? "+" : "−") + miktar(k.amount ?? 0, k.unit ?? ""))
+                        .font(Yazi.kucukOrta).foregroundStyle(giris ? Renk.iyi : Renk.kotu)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background((giris ? Renk.iyi : Renk.kotu).opacity(0.12), in: Capsule())
+                }
+                .padding(.vertical, 2)
+            }
+        }
+    }
+
+    // MARK: Gider özeti (bu ay)
+
+    private var giderOzeti: some View {
+        let ay = String(bugunISO().prefix(7))
+        let buAy = depo.veri.giderler.filter { ($0.date ?? "").hasPrefix(ay) }
+        let toplam = buAy.reduce(0) { $0 + ($1.amount ?? 0) }
+        let turler = Dictionary(grouping: buAy, by: { $0.type ?? "diger" })
+            .map { GiderTuru(ad: depo.giderTurAdi($0.key), tutar: $0.value.reduce(0) { $0 + ($1.amount ?? 0) }) }
+            .sorted { $0.tutar > $1.tutar }
+        let aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
+        let ayAdi = aylar[(Int(ay.suffix(2)) ?? 1) - 1]
+        return Kart {
+            HStack {
+                Image(systemName: "doc.text").foregroundStyle(Renk.orman2)
+                Text("Gider Özeti").font(Yazi.kartBaslik)
+                Spacer()
+                Text("Bu ay (\(ayAdi))").font(Yazi.etiket).foregroundStyle(Renk.metin3)
+            }
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Toplam gider").font(Yazi.kucuk).foregroundStyle(Color(white: 0.85))
+                    Text(tl(toplam)).font(Yazi.nunito(24, .bold)).foregroundStyle(Renk.bal).lineLimit(1).minimumScaleFactor(0.6)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, minHeight: 86, alignment: .leading)
+                .background(LinearGradient(colors: [Renk.orman2, Renk.ormanKoyu], startPoint: .topLeading, endPoint: .bottomTrailing),
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                VStack(alignment: .leading, spacing: 5) {
+                    if turler.isEmpty { Text("Bu ay gider yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
+                    ForEach(turler.prefix(4), id: \.ad) { t in
+                        HStack {
+                            Text(t.ad).font(Yazi.kucuk).lineLimit(1)
+                            Spacer(minLength: 4)
+                            Text(tl(t.tutar)).font(Yazi.kucukOrta)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    private struct GiderTuru { let ad: String; let tutar: Double }
 
     private func kapsul(_ ad: String, _ simge: String, _ f: @escaping () -> Void) -> some View {
         Button(action: f) {

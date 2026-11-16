@@ -117,7 +117,8 @@ struct Marka: View {
 
 /// Görsel arka planlı başlık (manzara/bokeh) + alttan yeşile kararan degrade.
 struct ManzaraBasligi<Icerik: View>: View {
-    let gorsel: String
+    /// nil: başlığın kendi görseli yok, sayfanın tam ekran arka planı (SekmeKaydirma(arka:)) görünür.
+    var gorsel: String? = nil
     @ViewBuilder var icerik: Icerik
     var body: some View {
         VStack(alignment: .leading, spacing: 0) { icerik }
@@ -126,18 +127,20 @@ struct ManzaraBasligi<Icerik: View>: View {
             .padding(.bottom, 14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background {
-                // Görsel durum çubuğunun arkasına da uzanır (eskiden .clipped() üstte koyu bant bırakıyordu).
-                Color.clear
-                    .overlay { Image(gorsel).resizable().scaledToFill() }
-                    .overlay {
-                        LinearGradient(stops: [
-                            .init(color: Renk.ormanKoyu.opacity(0.55), location: 0),
-                            .init(color: Renk.ormanKoyu.opacity(0.1), location: 0.4),
-                            .init(color: Renk.orman.opacity(0.95), location: 1)
-                        ], startPoint: .top, endPoint: .bottom)
-                    }
-                    .clipped()
-                    .padding(.top, -200)
+                if let gorsel {
+                    // Görsel durum çubuğunun arkasına da uzanır (eskiden .clipped() üstte koyu bant bırakıyordu).
+                    Color.clear
+                        .overlay { Image(gorsel).resizable().scaledToFill() }
+                        .overlay {
+                            LinearGradient(stops: [
+                                .init(color: Renk.ormanKoyu.opacity(0.55), location: 0),
+                                .init(color: Renk.ormanKoyu.opacity(0.1), location: 0.4),
+                                .init(color: Renk.orman.opacity(0.95), location: 1)
+                            ], startPoint: .top, endPoint: .bottom)
+                        }
+                        .clipped()
+                        .padding(.top, -200)
+                }
             }
             .foregroundStyle(.white)
     }
@@ -211,18 +214,44 @@ struct BosDurum: View {
     }
 }
 
-/// Tam sayfa arka plan: orman yeşili + yumuşak bokeh görseli (formlar, alt sayfalar, sayfa altları).
+/// Tam sayfa arka plan: görsel ekranı kaplar; üstte görsel seçilir, aşağı doğru kartların okunması için koyulaşır.
 struct SayfaArkaplani: View {
-    var gorsel = "ArkaYesil"
+    var gorsel = "SayfaBokeh"
+    /// 0…1: alt kısımların koyuluğu (açık renkli görsellerde yüksek).
+    var koyuluk: Double = 0.8
     var body: some View {
-        ZStack {
-            Renk.orman
-            Image(gorsel).resizable().scaledToFill().opacity(0.55)
-            LinearGradient(colors: [Renk.ormanKoyu.opacity(0.35), Renk.orman.opacity(0.55), Renk.ormanKoyu.opacity(0.7)],
-                           startPoint: .top, endPoint: .bottom)
-        }
-        .ignoresSafeArea()
-        .accessibilityHidden(true)
+        Color.clear
+            .overlay { Image(gorsel).resizable().scaledToFill() }
+            .overlay {
+                LinearGradient(stops: [
+                    .init(color: Renk.ormanKoyu.opacity(0.45 * koyuluk), location: 0),
+                    .init(color: Renk.orman.opacity(0.2 * koyuluk), location: 0.22),
+                    .init(color: Renk.orman.opacity(0.85 * koyuluk), location: 0.5),
+                    .init(color: Renk.ormanKoyu.opacity(min(1, 1.1 * koyuluk)), location: 1)
+                ], startPoint: .top, endPoint: .bottom)
+            }
+            .background(Renk.orman)
+            .clipped()
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
+    }
+}
+
+/// Uygulama simgesi kutusu: koyu yeşil cam kare + altın kenar + ışıma, içinde şeffaf simge (yenilogoo simgeleri).
+struct SimgeKutusu: View {
+    let ad: String
+    var boyut: CGFloat = 84
+    var body: some View {
+        let sekil = RoundedRectangle(cornerRadius: boyut * 0.26, style: .continuous)
+        Image(ad).resizable().scaledToFit()
+            .padding(boyut * 0.1)
+            .frame(width: boyut, height: boyut)
+            .background(LinearGradient(colors: [Color(red: 0.1, green: 0.32, blue: 0.22), Renk.ormanKoyu], startPoint: .top, endPoint: .bottom), in: sekil)
+            .overlay(sekil.strokeBorder(LinearGradient(colors: [Renk.acikBal, Renk.bal.opacity(0.35)], startPoint: .top, endPoint: .bottom), lineWidth: 1.4))
+            .shadow(color: Renk.bal.opacity(0.4), radius: 10)
+            .background(alignment: .bottom) {
+                Ellipse().fill(Renk.bal.opacity(0.55)).frame(width: boyut * 0.9, height: boyut * 0.28).blur(radius: 12).offset(y: boyut * 0.1)
+            }
     }
 }
 
@@ -231,8 +260,8 @@ extension View {
     /// Sayfa (sheet) olarak açıldıysa sunum arka planını da ayarlar.
     func formArkaplani() -> some View {
         self.scrollContentBackground(.hidden)
-            .background(SayfaArkaplani())
-            .presentationBackground { SayfaArkaplani() }
+            .background(SayfaArkaplani(gorsel: "SayfaBokeh", koyuluk: 1))
+            .presentationBackground { SayfaArkaplani(gorsel: "SayfaBokeh", koyuluk: 1) }
             .toolbarBackground(.hidden, for: .navigationBar)
     }
 }

@@ -6,11 +6,13 @@ struct AnaSayfaEkrani: View {
     @Environment(MenuDurumu.self) private var menu
     @State private var hava: HavaDurumu?
     @State private var havaHata = false
+    @State private var bildirimler = false
 
     var body: some View {
-        SekmeKaydirma {
-            ManzaraBasligi(gorsel: "ArkaManzara") {
-                HStack { Marka(); Spacer(); CamDugme(simge: "bell", nokta: dikkatSayisi > 0) { menu.git(.anaAri) } }
+        SekmeKaydirma(arka: "SayfaManzara") {
+            ManzaraBasligi {
+                HStack { Marka(); Spacer(); CamDugme(simge: "bell", nokta: !depo.bildirimler.isEmpty) { bildirimler = true }
+                    .accessibilityLabel("Bildirimler") }
                 SezonSecici().padding(.top, 14)
                 HavaKarti(hava: hava, hata: havaHata, sehir: depo.ayarlar.city).padding(.top, 12)
                     .onTapGesture { menu.git(.daha) }
@@ -19,15 +21,15 @@ struct AnaSayfaEkrani: View {
                 OzetKartlari()
                 HizliErisim()
                 YapilacaklarKarti()
+                OzetRaporKarti()
                 AnaAriDikkatKarti()
             }
             .padding(.horizontal, Olcu.kenar)
             .padding(.top, 12)
         }
         .task(id: depo.ayarlar.city) { await havaYukle() }
+        .sheet(isPresented: $bildirimler) { BildirimlerSayfasi() }
     }
-
-    private var dikkatSayisi: Int { depo.veri.kovanlar.filter { $0.sorunlu || $0.yasliAna }.count }
 
     private func havaYukle() async {
         let sehir = (depo.ayarlar.city?.isEmpty == false ? depo.ayarlar.city : nil) ?? "Muğla"
@@ -150,10 +152,10 @@ struct HizliErisim: View {
     @Environment(MenuDurumu.self) private var menu
     var body: some View {
         HStack(spacing: 8) {
-            simge("IkonKovanlar", "Kovan") { menu.git(.kovanlar) }
-            simge("IkonAnaAri", "Ana Arı") { menu.git(.anaAri) }
-            simge("IkonSatislar", "Satış") { menu.git(.satis); menu.yeniSatisIstegi += 1 }
-            simge("IkonArazi", "Arazi") { menu.git(.kovanlar); menu.araziIstegi += 1 }
+            simge("SimgeKovan", "Kovan") { menu.git(.kovanlar) }
+            simge("SimgeAnaAri", "Ana Arı") { menu.git(.anaAri) }
+            simge("SimgeSatis", "Satış") { menu.git(.satis); menu.yeniSatisIstegi += 1 }
+            simge("SimgeArazi", "Arazi") { menu.git(.kovanlar); menu.araziIstegi += 1 }
         }
         .padding(.vertical, 4)
     }
@@ -161,14 +163,7 @@ struct HizliErisim: View {
     private func simge(_ gorsel: String, _ ad: String, _ eylem: @escaping () -> Void) -> some View {
         Button(action: eylem) {
             VStack(spacing: 6) {
-                Image(gorsel).resizable().scaledToFit()
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Renk.acikBal.opacity(0.55), lineWidth: 1))
-                    .saturation(1.2).brightness(0.04)
-                    .shadow(color: Renk.bal.opacity(0.35), radius: 9)
-                    .background(alignment: .bottom) {
-                        Ellipse().fill(Renk.bal.opacity(0.7)).frame(height: 26).blur(radius: 12).offset(y: 10)
-                    }
+                SimgeKutusu(ad: gorsel, boyut: 74)
                 Text(ad).font(Yazi.etiket).foregroundStyle(Renk.krem)
             }
             .frame(maxWidth: .infinity)

@@ -30,7 +30,7 @@ func musteriKartlari(_ satislar: [Satis]) -> [MusteriKarti] {
 struct SatisEkrani: View {
     @Environment(VeriDeposu.self) private var depo
     @Environment(MenuDurumu.self) private var menu
-    @State private var bolum: SatisBolum = .satislar
+    @State private var bolum: SatisBolum = Baslatma.deger("-bolum") == "stok" ? .stok : .satislar
     @State private var filtre = "tumu"
     @State private var arama = ""
     @State private var yeniSatis = false
@@ -48,7 +48,7 @@ struct SatisEkrani: View {
                 .listRowSeparator(.hidden)
                 .modifier(InceltmeIzleyici(durum: menu))
             if bolum == .satislar { satislarBolumu } else {
-                StokGorunumu()
+                StokGorunumu { bolum = .satislar }
                     .listRowInsets(EdgeInsets(top: 12, leading: Olcu.kenar, bottom: 0, trailing: Olcu.kenar))
                     .listRowBackground(Color.clear).listRowSeparator(.hidden)
             }
@@ -56,7 +56,7 @@ struct SatisEkrani: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(SayfaArkaplani(gorsel: "ArkaIsik"))
+        .background(SayfaArkaplani(gorsel: "SayfaPetek", koyuluk: 0.9))
         .coordinateSpace(name: "kaydirma")
         .menuInceltme(menu)
         .environment(\.defaultMinListRowHeight, 0)
@@ -87,7 +87,7 @@ struct SatisEkrani: View {
 
     private var baslik: some View {
         let sezon = depo.sezonda(depo.veri.satislar)
-        return ManzaraBasligi(gorsel: "ArkaPetek") {
+        return ManzaraBasligi {
             HStack { Marka(kucuk: true); Spacer(); CamDugme(simge: "chart.bar") { rapor = true }.accessibilityLabel("Satış raporu") }
             BuyukBaslik(metin: "Satış", alt: "\(sezon.count) satış · \(tl(sezon.reduce(0) { $0 + ($1.total ?? 0) }))")
             Segment(secenekler: [(SatisBolum.satislar, "Satışlar"), (.stok, "Stok")], secili: $bolum).padding(.top, 12)

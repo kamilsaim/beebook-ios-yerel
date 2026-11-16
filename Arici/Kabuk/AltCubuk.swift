@@ -268,7 +268,7 @@ private struct OfsetAnahtari: PreferenceKey {
 /// (eskiden her karede güncelleniyordu; yavaş kaydırmada kare başı fark 6 pt'yi hiç aşmadığı için menü incelmiyordu).
 struct InceltmeHesabi {
     private var dayanak: CGFloat = 0
-    mutating func uygula(_ y: CGFloat, _ durum: MenuDurumu) {
+    @MainActor mutating func uygula(_ y: CGFloat, _ durum: MenuDurumu) {
         if y < 40 {
             if durum.ince { durum.ince = false }
             dayanak = y
@@ -325,6 +325,8 @@ extension View {
 /// Sekme ekranlarının ortak kaydırma kabı: koordinat alanı + incelme + alt menü payı.
 struct SekmeKaydirma<Icerik: View>: View {
     @Environment(MenuDurumu.self) private var menu
+    var arka = "SayfaBokeh"
+    var koyuluk = 0.8
     @ViewBuilder var icerik: Icerik
     var body: some View {
         ScrollView {
@@ -333,8 +335,9 @@ struct SekmeKaydirma<Icerik: View>: View {
                 .padding(.bottom, Olcu.altCubukPayi)
         }
         .coordinateSpace(name: "kaydirma")
+        .defaultScrollAnchor(Baslatma.var_("-alt") ? .bottom : .top)
         .menuInceltme(menu)
         .scrollIndicators(.hidden)
-        .background(SayfaArkaplani())
+        .background(SayfaArkaplani(gorsel: arka, koyuluk: koyuluk))
     }
 }

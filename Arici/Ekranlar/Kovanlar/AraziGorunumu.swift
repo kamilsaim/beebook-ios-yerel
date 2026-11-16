@@ -19,8 +19,8 @@ struct AraziGorunumu: View {
         VStack(alignment: .leading, spacing: 10) {
             ScrollView([.horizontal, .vertical]) {
                 ZStack(alignment: .topLeading) {
-                    Image("ArkaCicek").resizable().scaledToFill().frame(width: genislik, height: yukseklik).clipped()
-                    LinearGradient(colors: [Color(red: 0.12, green: 0.31, blue: 0.16).opacity(0.25), Renk.orman.opacity(0.35)], startPoint: .top, endPoint: .bottom)
+                    Image("AraziZemin").resizable().scaledToFill().frame(width: genislik, height: yukseklik).clipped()
+                    Renk.ormanKoyu.opacity(0.12)
                     ForEach(araLar(), id: \.id) { a in
                         RoundedRectangle(cornerRadius: 6).fill(Color(red: 0.55, green: 0.42, blue: 0.25).opacity(0.75))
                             .frame(width: a.w, height: a.h).offset(x: a.x, y: a.y)
@@ -51,8 +51,7 @@ struct AraziGorunumu: View {
             // İçerik çerçeveden küçük kalırsa ya da kenara kaydırılınca siyah boşluk görünmesin.
             .background {
                 Color.clear
-                    .overlay { Image("ArkaCicek").resizable().scaledToFill() }
-                    .overlay { Renk.orman.opacity(0.3) }
+                    .overlay { Image("AraziZemin").resizable().scaledToFill() }
                     .clipped()
             }
             .scrollBounceBehavior(.basedOnSize, axes: [.horizontal, .vertical])
