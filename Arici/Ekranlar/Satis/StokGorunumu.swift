@@ -14,6 +14,9 @@ struct StokGorunumu: View {
     /// Stok hareketine dokununca açılan kayıt (satış / hasat / elle giriş-çıkış).
     @State private var hareketForm: HareketHedefi?
     @State private var tumHareketler = false
+    /// Hareket süzgeci: "giris" (varsayılan) | "cikis" | "tumu"; ürün süzgeci nil = tümü.
+    @State private var hareketTuru = "giris"
+    @State private var hareketUrunu: String?
 
     var body: some View {
         let urunler = depo.urunler
@@ -210,8 +213,17 @@ struct StokGorunumu: View {
 
     private func hareketler(_ urunler: [UrunTanimi]) -> some View {
         // Aktif sezonun hareketleri (bakiye sezon-üstüdür; liste sezona göre). Satıra basınca kaydın kendisi açılır.
-        let tum = depo.sezonda(depo.veri.stokKayitlari).sorted { ($0.date ?? "") > ($1.date ?? "") }
+        let sezonHareketi = depo.sezonda(depo.veri.stokKayitlari).sorted { ($0.date ?? "") > ($1.date ?? "") }
+        let tum = sezonHareketi.filter { k in
+            guard hareketUrunu == nil || k.product == hareketUrunu else { return false }
+            switch hareketTuru {
+            case "giris": return k.action == "in"
+            case "cikis": return k.action == "out"
+            default: return true
+            }
+        }
         let son = tumHareketler ? tum : Array(tum.prefix(6))
+        let hareketliUrunler = urunler.filter { u in sezonHareketi.contains { $0.product == u.v } }
         return Kart {
             HStack {
                 Image(systemName: "arrow.left.arrow.right").foregroundStyle(Renk.orman2)
@@ -219,8 +231,28 @@ struct StokGorunumu: View {
                 Spacer()
                 Button("Rapor") { rapor = true }.font(Yazi.etiket).foregroundStyle(Renk.orman2)
             }
-            if son.isEmpty { Text("Bu sezon stok hareketi yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
-            else { Text("Düzenlemek için harekete dokun.").font(Yazi.minik).foregroundStyle(Renk.metin3) }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    suzgecCipi("Girişler \(sezonHareketi.filter { $0.action == "in" }.count)", hareketTuru == "giris") { hareketTuru = "giris"; tumHareketler = false }
+                    suzgecCipi("Çıkışlar \(sezonHareketi.filter { $0.action == "out" }.count)", hareketTuru == "cikis") { hareketTuru = "cikis"; tumHareketler = false }
+                    suzgecCipi("Tümü \(sezonHareketi.count)", hareketTuru == "tumu") { hareketTuru = "tumu"; tumHareketler = false }
+                }
+            }
+            if hareketliUrunler.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        suzgecCipi("Tüm ürünler", hareketUrunu == nil) { hareketUrunu = nil; tumHareketler = false }
+                        ForEach(hareketliUrunler, id: \.v) { u in
+                            suzgecCipi(u.temizAd, hareketUrunu == u.v) { hareketUrunu = u.v; tumHareketler = false }
+                        }
+                    }
+                }
+            }
+            if son.isEmpty {
+                Text(sezonHareketi.isEmpty ? "Bu sezon stok hareketi yok." : "Bu süzgeçte hareket yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3)
+            } else {
+                Text(hareketTuru == "cikis" ? "Satıştan düşen çıkışa dokununca o satış açılır." : "Düzenlemek için harekete dokun.").font(Yazi.minik).foregroundStyle(Renk.metin3)
+            }
             ForEach(son, id: \.id) { k in
                 let giris = k.action == "in"
                 let ad = urunler.first { $0.v == k.product }?.temizAd ?? (k.product ?? "Ürün")
@@ -229,7 +261,7 @@ struct StokGorunumu: View {
                         .foregroundStyle(giris ? Renk.iyi : Renk.kotu)
                         .frame(width: 26, height: 26).background((giris ? Renk.iyi : Renk.kotu).opacity(0.14), in: Circle())
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(ad + " · " + hareketTuru(k))
+                        Text(ad + " · " + hareketTuruAdi(k))
                             .font(Yazi.kucukOrta).lineLimit(1)
                         Text([k.date.map { kisaTarih($0) }, k.note].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
                             .font(Yazi.minik).foregroundStyle(Renk.metin3).lineLimit(1)
@@ -255,7 +287,17 @@ struct StokGorunumu: View {
         }
     }
 
-    private func hareketTuru(_ k: StokKaydi) -> String {
+    private func suzgecCipi(_ ad: String, _ secili: Bool, _ f: @escaping () -> Void) -> some View {
+        Button(action: f) {
+            Text(ad).font(Yazi.etiket).foregroundStyle(secili ? Color.white : Renk.metin)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(secili ? Renk.orman2 : Renk.kart, in: Capsule())
+                .overlay(Capsule().strokeBorder(secili ? Renk.orman2 : Renk.krem2))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func hareketTuruAdi(_ k: StokKaydi) -> String {
         if k.action == "in" { return k.milkId != nil ? "Hasat" : "Giriş" }
         guard k.saleId != nil else { return "Çıkış" }
         let not = k.note ?? ""
