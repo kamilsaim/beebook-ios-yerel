@@ -51,7 +51,7 @@ struct IrkOzeti: View {
         let anasiz = kovanlar.count - anali.count
         let toplam = max(1, kovanlar.count)
         let buYil = Calendar.current.component(.year, from: Date())
-        Kart {
+        DogaKart {
             KartBasligi(baslik: "Kovanlardaki analar", baglanti: "\(kovanlar.count) kovan")
             GeometryReader { g in
                 HStack(spacing: 0) {
@@ -101,7 +101,7 @@ struct SeriKarti: View {
     let seri: AnaSeri
     var body: some View {
         let m = seri.memeler
-        Kart {
+        DogaKart {
             HStack(spacing: 12) {
                 Image("UrunAnaari").resizable().scaledToFill().frame(width: 60, height: 60)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))

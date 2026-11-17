@@ -11,8 +11,9 @@ struct OzetRaporKarti: View {
     var body: some View {
         let satis = SatisOzeti(depo: depo)
         let saglik = KoloniSagligi(kovanlar: depo.veri.kovanlar)
-        Kart {
+        DogaKart {
             HStack {
+                Spacer().frame(width: 40)
                 Image(systemName: "chart.bar.fill").foregroundStyle(Renk.orman2)
                 Text("Özet ve Raporlar").font(Yazi.kartBaslik)
                 Spacer()

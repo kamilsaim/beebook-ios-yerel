@@ -11,7 +11,7 @@ struct AnaAriDikkatKarti: View {
             .filter { $0.sorunlu || ["bakire", "new"].contains($0.queenStatus ?? "") || $0.yasliAna }
             .sorted { oncelik($0) < oncelik($1) || (oncelik($0) == oncelik($1) && $0.numara < $1.numara) }
         if !dikkat.isEmpty {
-            Kart {
+            DogaKart {
                 KartBasligi(baslik: "Ana arı dikkat", baglanti: dikkat.count > 3 ? "Tümü (\(dikkat.count))" : "Tümü") { menu.git(.anaAri) }
                 ForEach(dikkat.prefix(3), id: \.id) { k in
                     HStack(spacing: 10) {

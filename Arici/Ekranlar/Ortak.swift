@@ -130,3 +130,34 @@ extension VeriDeposu {
         return k.filter { AriCekirdek.sezonda($0.ham["date"]?.metinDegeri, a) }
     }
 }
+
+extension Kovan {
+    /// DIKKAT durumundaki kovan için kısa neden (kart ve detay rozeti).
+    var dikkatNedeni: String {
+        if yasliAna { return "Yaşlı ana" }
+        if queenStatus != "yes" { return anaDurumMetni }
+        if gucMetni == "Zayıf" { return "Zayıf koloni" }
+        return "Dikkat"
+    }
+}
+
+/// Kuşak seçenekleri (formda seçmeli).
+let kusakSecenekleri = ["Saf", "F1", "F2", "Melez"]
+
+/// Eski serbest yazılmış kuşağı seçeneklerle eşler ("f1" → "F1"); eşleşmezse olduğu gibi.
+func kusakDuzelt(_ k: String?) -> String {
+    guard let t = k?.trimmingCharacters(in: .whitespaces), !t.isEmpty else { return "" }
+    return kusakSecenekleri.first { $0.lowercased() == t.lowercased() } ?? t
+}
+
+/// Krem zemin üstünde okunur koyu bal tonu (ikonlar için).
+let kartAltin = Color(red: 0.72, green: 0.5, blue: 0.05)
+
+extension VeriDeposu {
+    func yildizDegistir(_ kovanId: String) {
+        degistir { v in
+            var l = v.kovanlar
+            if let i = l.firstIndex(where: { $0.id == kovanId }) { l[i].starred.toggle(); v.kovanlar = l }
+        }
+    }
+}

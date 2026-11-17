@@ -26,7 +26,7 @@ struct YapilacaklarKarti: View {
         let isler = depo.veri.isler
         let tarihli = Dictionary(grouping: isler.filter { !($0.dueDate ?? "").isEmpty }, by: { String(($0.dueDate ?? "").prefix(10)) })
         let bugun = bugunISO()
-        Kart {
+        DogaKart {
             KartBasligi(baslik: "Yapılacaklar", baglanti: tumu ? "Takvim" : "Tümü") { tumu.toggle() }
             if tumu {
                 tumListe(tarihli: tarihli, tarihsiz: isler.filter { ($0.dueDate ?? "").isEmpty }, bugun: bugun)

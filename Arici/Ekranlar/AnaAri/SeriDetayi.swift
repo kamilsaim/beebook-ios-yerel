@@ -22,8 +22,9 @@ struct SeriDetayi: View {
                         CamDugme(simge: "pencil") { duzenle = true }.accessibilityLabel("Seriyi düzenle")
                     }
                     VStack(spacing: 2) {
-                        Image(systemName: "crown.fill").font(.system(size: 22)).foregroundStyle(Renk.bal)
-                        Text("Ana Arı Üretimi").font(Yazi.logo(32)).foregroundStyle(Renk.krem)
+                        Image(systemName: "rosette").font(.system(size: 20, weight: .semibold)).foregroundStyle(Renk.acikBal)
+                            .frame(width: 40, height: 40).background(Renk.bal.opacity(0.25), in: Circle()).overlay(Circle().strokeBorder(Renk.bal))
+                        Text("Ana Arı Üretimi").font(Yazi.nunito(26, .bold)).foregroundStyle(Renk.krem)
                         Text("Gelişim takibi ve dağıtım").font(Yazi.kucuk).foregroundStyle(Color(white: 0.85))
                     }
                     .frame(maxWidth: .infinity)
@@ -62,22 +63,24 @@ struct SeriDetayi: View {
     // MARK: Parçalar
 
     private func seriKarti(_ s: AnaSeri) -> some View {
-        Kart {
+        DogaKart {
             HStack(spacing: 12) {
-                Image("UrunAnaari").resizable().scaledToFill().frame(width: 92, height: 92)
+                Image("UrunAnaari").resizable().scaledToFill().frame(width: 84, height: 84)
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Renk.bal, lineWidth: 1.5))
+                    .padding(.leading, 18).padding(.top, 8)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text(s.name ?? "Seri").font(Yazi.logo(26)).foregroundStyle(Renk.orman).lineLimit(1)
+                        Text(s.name ?? "Seri").font(Yazi.nunito(21, .bold)).foregroundStyle(Renk.orman).lineLimit(1)
                         Spacer(minLength: 4)
                         Rozet(metin: s.status == "completed" ? "Tamamlandı" : s.status == "failed" ? "Başarısız" : "Aktif",
                               tur: s.status == "failed" ? .kotu : s.status == "completed" ? .notr : .iyi)
                     }
                     bilgi("calendar", "Transfer: " + (s.transfer.map { kisaTarih($0) } ?? "—"))
-                    bilgi("archivebox", "Damızlık: " + (depo.kovan(s.motherHive).map { "Kovan \($0.num)" } ?? "—")
+                    bilgi("square.stack.3d.up", "Damızlık: " + (depo.kovan(s.motherHive).map { "Kovan \($0.num)" } ?? "—")
                           + (depo.kovan(s.starterHive).map { " · Başlatıcı: \($0.num)" } ?? ""))
-                    bilgi("scope", [s.race, s.generation].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
-                          + (s.grafted.map { " · \(Int($0)) larva aşılandı" } ?? ""))
+                    bilgi("ladybug", [s.race, s.generation].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+                          + (s.grafted.map { " · \(Int($0)) larva" } ?? ""))
                 }
             }
         }
@@ -94,10 +97,7 @@ struct SeriDetayi: View {
         let adimlar = s.transfer.map { gelisimTakvimi(transfer: $0) } ?? []
         let aktif = s.transfer.map { aktifAdimIndeksi(transfer: $0, bugun: bugunISO()) } ?? -1
         return Kart(dolgu: 12) {
-            HStack(spacing: 6) {
-                Image(systemName: "calendar").foregroundStyle(Renk.orman2)
-                Text("Gelişim Takvimi").font(Yazi.kucukOrta)
-            }
+            BolumBasligi(simge: "chart.line.uptrend.xyaxis", baslik: "Gelişim Takvimi", kucuk: true)
             if adimlar.isEmpty { Text("Transfer tarihi yok").font(Yazi.etiket).foregroundStyle(Renk.metin3) }
             ForEach(Array(adimlar.enumerated()), id: \.offset) { i, a in
                 HStack(spacing: 6) {
@@ -116,10 +116,7 @@ struct SeriDetayi: View {
     private func ozet(_ s: AnaSeri) -> some View {
         let m = s.memeler
         return Kart(dolgu: 12) {
-            HStack(spacing: 6) {
-                Image(systemName: "chart.bar.fill").foregroundStyle(Renk.bal)
-                Text("Üretim Özeti").font(Yazi.kucukOrta)
-            }
+            BolumBasligi(simge: "chart.bar.fill", baslik: "Üretim", kucuk: true)
             ozetSatir("Aşılanan", s.grafted.map { Int($0) } ?? 0, Renk.metin)
             ozetSatir("Tutan", s.accepted.map { Int($0) } ?? m.count, Renk.orman2)
             ozetSatir("Kovanda", m.filter { $0.status == "kovana_aktarildi" }.count, Renk.iyi)
@@ -130,13 +127,15 @@ struct SeriDetayi: View {
     }
 
     private func ozetSatir(_ ad: String, _ sayi: Int, _ renk: Color) -> some View {
-        HStack {
+        HStack(spacing: 6) {
+            Circle().fill(renk).frame(width: 8, height: 8)
             Text(ad).font(Yazi.kucuk)
             Spacer()
             Text("\(sayi)").font(Yazi.nunito(18, .bold)).foregroundStyle(renk)
         }
         .padding(.horizontal, 8).padding(.vertical, 3)
-        .background(Renk.kart, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .background(renk.opacity(0.08), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(renk.opacity(0.2)))
     }
 
     private func memeler(_ s: AnaSeri) -> some View {

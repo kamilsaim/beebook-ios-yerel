@@ -245,7 +245,7 @@ struct SatisEkrani: View {
 struct MusteriKartiGorunumu: View {
     let kart: MusteriKarti
     let urunler: [UrunTanimi]
-    private static let renkler: [Color] = [Renk.orman2, Color(red: 0.6, green: 0.42, blue: 0.23), Renk.bilgi, Renk.kotu, Renk.mor, Renk.uyari]
+    static let renkler: [Color] = [Renk.orman2, Color(red: 0.6, green: 0.42, blue: 0.23), Renk.bilgi, Renk.kotu, Renk.mor, Renk.uyari]
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -270,9 +270,8 @@ struct MusteriKartiGorunumu: View {
                 rozet
             }
         }
-        .padding(12)
-        .background(Renk.krem, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .foregroundStyle(Renk.metin)
+        .padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 16)
+        .dogaZemini(yaricap: 20, yaprak: 50, golge: 6, dalga: 0.55)
         .accessibilityElement(children: .combine)
     }
 

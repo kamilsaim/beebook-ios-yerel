@@ -1,109 +1,370 @@
 import AriCekirdek
 import SwiftUI
 import UniformTypeIdentifiers
+import Charts
 
 // MARK: - Raporlar (web Özet sayfası)
 
 struct RaporlarEkrani: View {
     @Environment(VeriDeposu.self) private var depo
+    @State private var hedef: RaporHedefi?
+    enum RaporHedefi: String, Identifiable { case satis, stok; var id: String { rawValue } }
+
     var body: some View {
         let k = depo.veri.kovanlar
         let s = depo.sezonda(depo.veri.satislar)
         let g = depo.sezonda(depo.veri.giderler)
         let gelir = s.reduce(0) { $0 + ($1.total ?? 0) }, gider = g.reduce(0) { $0 + ($1.amount ?? 0) }
-        List {
-            Section("Finans (sezon)") {
-                satir("Gelir", tl(gelir)); satir("Gider", tl(gider)); satir("Net", tl(gelir - gider)).bold()
-                satir("Bekleyen tahsilat", tl(bekleyenToplam(satislar: s)))
-            }
-            Section("Kovanlar") {
-                dagilim(Dictionary(grouping: k) { $0.type ?? "—" }.mapValues(\.count))
-            }
-            Section("Ana arı durumu") {
-                dagilim(Dictionary(grouping: k) { $0.anaDurumMetni }.mapValues(\.count))
-            }
-            Section("Irklar") {
-                dagilim(Dictionary(grouping: k.filter { !($0.race ?? "").isEmpty }) { $0.race! }.mapValues(\.count))
-            }
-            Section("Üretim (sezon)") {
-                satir("Arı sütü hasadı", miktar(depo.sezonda(depo.veri.hasatlar).reduce(0) { $0 + ($1.amount ?? 0) }, "gr"))
-                ForEach(stokRaporu(depo.veri, urunler: depo.urunler), id: \.urun) { r in
-                    let u = depo.urunler.first { $0.v == r.urun }
-                    satir(u?.temizAd ?? r.urun, "\(miktar(r.mevcut, u?.unit ?? "")) mevcut")
+        let net = gelir - gider
+        let satis = SatisOzeti(depo: depo)
+        let saglik = KoloniSagligi(kovanlar: k)
+        let sezonAdi = depo.veri.sezonlar.first { $0.id == depo.ayarlar.activeSeason }?.name ?? "Sezon"
+        ScrollView {
+            VStack(spacing: 12) {
+                // Finans
+                DogaKart {
+                    HStack {
+                        BolumBasligi(simge: "wallet.pass", baslik: "Sezon Finansı", kucuk: true)
+                        Spacer()
+                        Text(sezonAdi).font(Yazi.minik).foregroundStyle(dahaAltin)
+                            .padding(.horizontal, 10).padding(.vertical, 4).background(Renk.bal.opacity(0.18), in: Capsule())
+                    }
+                    HStack(spacing: 8) {
+                        finans("chart.line.uptrend.xyaxis", "Gelir", tl(gelir), Renk.iyi)
+                        finans("chart.line.downtrend.xyaxis", "Gider", tl(gider), Renk.kotu)
+                        finans("wallet.pass", "Net", tl(net), net >= 0 ? Renk.orman2 : Renk.kotu, vurgu: true)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    if gelir + gider > 0 {
+                        let oran = gelir / (gelir + gider)
+                        GeometryReader { geo in
+                            HStack(spacing: 0) {
+                                Rectangle().fill(Renk.iyi).frame(width: geo.size.width * oran)
+                                Rectangle().fill(Renk.kotu.opacity(0.75))
+                            }
+                        }
+                        .frame(height: 10).clipShape(Capsule())
+                        HStack {
+                            Text("Gelir %\(Int((oran * 100).rounded()))").foregroundStyle(Renk.iyi)
+                            Spacer()
+                            Text("Gider %\(100 - Int((oran * 100).rounded()))").foregroundStyle(Renk.kotu)
+                        }
+                        .font(Yazi.minik)
+                    }
+                    HStack(alignment: .top, spacing: 8) {
+                        VStack(spacing: 4) {
+                            Halka(oran: satis.tahsilatOrani, renk: Renk.bal, metin: satis.tahsilatOrani.map { "%\(Int(($0 * 100).rounded()))" } ?? "—")
+                            Text("Tahsilat").font(Yazi.minik).foregroundStyle(Renk.metin2)
+                            Text(satis.bekleyen > 0 ? "\(tl(satis.bekleyen)) bekliyor" : "Bekleyen yok").font(Yazi.minik)
+                                .foregroundStyle(satis.bekleyen > 0 ? Renk.uyari : Renk.metin3).lineLimit(1).minimumScaleFactor(0.7)
+                        }
+                        .icKutu()
+                        VStack(spacing: 4) {
+                            Text("Son 6 ay satış (₺)").font(Yazi.minik).foregroundStyle(Renk.metin2)
+                            if satis.aylik.allSatisfy({ $0.tutar == 0 }) {
+                                Text("Bu dönemde satış yok").font(Yazi.minik).foregroundStyle(Renk.metin3).frame(maxWidth: .infinity, minHeight: 86)
+                            } else {
+                                Chart(satis.aylik) { a in
+                                    BarMark(x: .value("Ay", a.ad), y: .value("₺", a.tutar))
+                                        .foregroundStyle(LinearGradient(colors: [Renk.acikBal, Renk.bal], startPoint: .top, endPoint: .bottom))
+                                        .cornerRadius(3)
+                                }
+                                .chartYAxis { AxisMarks(position: .leading) { _ in AxisValueLabel().font(.system(size: 8)) } }
+                                .chartXAxis { AxisMarks { _ in AxisValueLabel().font(.system(size: 8)) } }
+                                .frame(height: 96)
+                            }
+                        }
+                        .icKutu()
+                        .layoutPriority(1)
+                    }
                 }
+                // Gider dağılımı
+                let giderSatirlari = giderRaporu(g, turler: depo.giderTurleri.map(\.v)).sorted { $0.toplam > $1.toplam }
+                if !giderSatirlari.isEmpty {
+                    let enBuyuk = max(1, giderSatirlari.map(\.toplam).max() ?? 1)
+                    Kart {
+                        BolumBasligi(simge: "doc.text", baslik: "Gider Dağılımı", kucuk: true)
+                        ForEach(giderSatirlari, id: \.tur) { r in
+                            CubukSatiri(simge: giderSimgesi(r.tur), ad: emojisiz(depo.giderTurAdi(r.tur)), alt: "\(r.adet) kayıt", deger: tl(r.toplam), oran: r.toplam / enBuyuk, renk: Renk.kotu.opacity(0.7))
+                        }
+                    }
+                }
+                // Kovanlar
+                Kart {
+                    BolumBasligi(simge: "square.stack.3d.up", baslik: "Kovanlar", kucuk: true)
+                    HStack(spacing: 12) {
+                        VStack(spacing: 2) {
+                            Halka(oran: saglik.oran, renk: Renk.iyi, metin: saglik.oran.map { "%\(Int(($0 * 100).rounded()))" } ?? "—", boyut: 64)
+                            Text("Koloni sağlığı").font(Yazi.minik).foregroundStyle(Renk.metin2)
+                        }
+                        Grid(horizontalSpacing: 6, verticalSpacing: 6) {
+                            GridRow { sayiHapi("\(k.count)", "toplam", Renk.orman2); sayiHapi("\(saglik.saglikli)", "sağlıklı", Renk.iyi) }
+                            GridRow { sayiHapi("\(saglik.riskli)", "riskli", Renk.uyari); sayiHapi("\(k.filter(\.arisiz).count)", "arısız", Renk.metin3) }
+                        }
+                    }
+                    araBaslik("Kovan tipi")
+                    let tipler = Dictionary(grouping: k) { ($0.type ?? "").isEmpty ? "—" : $0.type! }.mapValues(\.count).sorted { $0.value > $1.value }
+                    let tipEnBuyuk = Double(max(1, tipler.first?.value ?? 1))
+                    ForEach(tipler, id: \.key) { e in
+                        CubukSatiri(simge: "square.stack.3d.up", ad: e.key, deger: "\(e.value)", oran: Double(e.value) / tipEnBuyuk, renk: Renk.bal)
+                    }
+                }
+                // Ana arı
+                Kart {
+                    BolumBasligi(simge: "crown", baslik: "Ana Arı Durumu", kucuk: true)
+                    let gruplar = Dictionary(grouping: k) { $0.anaDurumMetni }.sorted { $0.value.count > $1.value.count }
+                    let enBuyuk = Double(max(1, gruplar.first?.value.count ?? 1))
+                    ForEach(gruplar, id: \.key) { e in
+                        CubukSatiri(simge: "", ad: e.key, deger: "\(e.value.count)", oran: Double(e.value.count) / enBuyuk, renk: anaDurumRengi(e.value[0]), nokta: true)
+                    }
+                    let irklar = Dictionary(grouping: k.filter { !($0.race ?? "").isEmpty && !$0.arisiz }) { $0.race! }.mapValues(\.count).sorted { $0.value > $1.value }
+                    if !irklar.isEmpty {
+                        araBaslik("Irklar")
+                        let toplam = Double(max(1, irklar.reduce(0) { $0 + $1.value }))
+                        let renkler: [Color] = [Renk.orman2, Renk.bal, Renk.bilgi, Renk.mor, Renk.kotu, Renk.metin3]
+                        GeometryReader { geo in
+                            HStack(spacing: 0) {
+                                ForEach(Array(irklar.enumerated()), id: \.offset) { i, e in
+                                    Rectangle().fill(renkler[i % renkler.count]).frame(width: geo.size.width * Double(e.value) / toplam)
+                                }
+                            }
+                        }
+                        .frame(height: 12).clipShape(Capsule())
+                        ForEach(Array(irklar.enumerated()), id: \.offset) { i, e in
+                            HStack(spacing: 6) {
+                                RoundedRectangle(cornerRadius: 3).fill(renkler[i % renkler.count]).frame(width: 10, height: 10)
+                                Image(systemName: "ladybug").font(.system(size: 12)).foregroundStyle(Renk.metin3)
+                                Text(e.key).font(Yazi.govde)
+                                Spacer()
+                                Text("\(e.value) · %\(Int((Double(e.value) * 100 / toplam).rounded()))").font(Yazi.govdeOrta).foregroundStyle(Renk.metin2)
+                            }
+                        }
+                    }
+                }
+                // Üretim ve stok
+                let urunSatirlari = stokRaporu(depo.veri, urunler: depo.urunler)
+                Kart {
+                    BolumBasligi(simge: "shippingbox", baslik: "Üretim ve Stok", kucuk: true)
+                    HStack {
+                        Text("Arı sütü hasadı (sezon)").font(Yazi.govde).foregroundStyle(Renk.metin2)
+                        Spacer()
+                        Text(miktar(depo.sezonda(depo.veri.hasatlar).reduce(0) { $0 + ($1.amount ?? 0) }, "gr")).font(Yazi.nunito(16, .bold))
+                    }
+                    .icKutu()
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                        ForEach(urunSatirlari, id: \.urun) { r in
+                            let u = depo.urunler.first { $0.v == r.urun }
+                            VStack(spacing: 2) {
+                                Text(u?.temizAd ?? r.urun).font(Yazi.minik).foregroundStyle(Renk.metin2).lineLimit(1)
+                                Text(miktar(r.mevcut, u?.unit ?? "")).font(Yazi.nunito(17, .bold)).foregroundStyle(r.mevcut < 0 ? Renk.kotu : Renk.metin)
+                                Text("mevcut").font(Yazi.minik).foregroundStyle(Renk.metin3)
+                            }
+                            .icKutu()
+                        }
+                    }
+                }
+                // Detaylı raporlar
+                Kart(dolgu: 6) {
+                    Button { hedef = .satis } label: {
+                        SimgeliSatir(simge: "cart", renk: dahaAltin, baslik: "Satış raporu", alt: "Ürün, hediye, zekat ve bekleyen ödemeler") { Image(systemName: "chevron.right").foregroundStyle(Renk.metin3) }
+                            .padding(8)
+                    }
+                    .buttonStyle(.plain)
+                    Rectangle().fill(Renk.krem2).frame(height: 1).padding(.horizontal, 8)
+                    Button { hedef = .stok } label: {
+                        SimgeliSatir(simge: "chart.bar", renk: dahaAltin, baslik: "Stok raporu", alt: "Giriş, satış, hediye, zekat ve mevcut") { Image(systemName: "chevron.right").foregroundStyle(Renk.metin3) }
+                            .padding(8)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, Olcu.kenar)
+            .padding(.top, 6)
+        }
+        .scrollIndicators(.hidden)
+        .sheet(item: $hedef) { h in
+            switch h {
+            case .satis: SatisRaporuSayfasi()
+            case .stok: StokRaporuSayfasi()
             }
         }
     }
-    private func satir(_ a: String, _ b: String) -> some View { HStack { Text(a); Spacer(); Text(b).foregroundStyle(.secondary) } }
-    @ViewBuilder private func dagilim(_ d: [String: Int]) -> some View {
-        let toplam = max(1, d.values.reduce(0, +))
-        ForEach(d.sorted { $0.value > $1.value }, id: \.key) { e in
-            VStack(alignment: .leading, spacing: 4) {
-                HStack { Text(e.key); Spacer(); Text("\(e.value)").bold() }
-                GeometryReader { geo in Capsule().fill(Renk.bal).frame(width: geo.size.width * CGFloat(e.value) / CGFloat(toplam), height: 6) }.frame(height: 6)
+
+    private func finans(_ simge: String, _ baslik: String, _ deger: String, _ renk: Color, vurgu: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 4) {
+                Image(systemName: simge).font(.system(size: 12, weight: .semibold)).foregroundStyle(renk)
+                Text(baslik).font(Yazi.minik).foregroundStyle(Renk.metin2)
             }
+            Text(deger).font(Yazi.nunito(15, .bold)).foregroundStyle(renk).lineLimit(1).minimumScaleFactor(0.6)
         }
+        .padding(.horizontal, 8).padding(.vertical, 9)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .background(vurgu ? renk.opacity(0.12) : .white.opacity(0.78), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(renk.opacity(vurgu ? 0.45 : 0.22)))
+    }
+
+    private func sayiHapi(_ sayi: String, _ ad: String, _ renk: Color) -> some View {
+        HStack(spacing: 6) {
+            Text(sayi).font(Yazi.nunito(17, .bold)).foregroundStyle(renk)
+            Text(ad).font(Yazi.minik).foregroundStyle(Renk.metin2).lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 7)
+        .frame(maxWidth: .infinity)
+        .background(renk.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func araBaslik(_ m: String) -> some View {
+        Text(m.uppercased(with: Locale(identifier: "tr"))).font(Yazi.nunito(11, .bold)).foregroundStyle(Renk.metin3).padding(.top, 6)
+    }
+
+    private func anaDurumRengi(_ k: Kovan) -> Color {
+        switch k.queenStatus {
+        case "yes": return Renk.iyi
+        case "no": return Renk.kotu
+        case "bakire", "new": return Renk.bilgi
+        case "meme": return Renk.mor
+        case "empty": return Color(white: 0.6)
+        default: return Renk.uyari
+        }
+    }
+}
+
+private extension View {
+    func icKutu() -> some View {
+        self.padding(10)
+            .frame(maxWidth: .infinity)
+            .background(.white.opacity(0.78), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Renk.bal.opacity(0.3)))
     }
 }
 
 // MARK: - Sezonlar
 
+/// Sezonun bitişi: bir sonraki sezonun başlangıcından bir gün önce; en yeni sezon "devam ediyor" (nil).
+func sezonBitisi(_ s: Sezon, _ tumu: [Sezon]) -> String? {
+    let bas = sezonBaslangici(s)
+    guard let sonraki = tumu.map({ sezonBaslangici($0) }).filter({ $0 > bas }).min(), let d = isoTarih(sonraki),
+          let once = Calendar.current.date(byAdding: .day, value: -1, to: d) else { return nil }
+    return bugunISO(once)
+}
+
+func uzunTarih(_ iso: String) -> String { "\(kisaTarih(iso)) \(iso.prefix(4))" }
+
 struct SezonlarEkrani: View {
     @Environment(VeriDeposu.self) private var depo
-    @State private var yeni = false
+    @State private var form: KimlikKutusu?
     var body: some View {
         let sezonlar = depo.veri.sezonlar.sorted { sezonBaslangici($0) > sezonBaslangici($1) }
+        let aktif = sezonlar.first { $0.id == depo.ayarlar.activeSeason }
         List {
-            Section(footer: Text("Satış, gider ve arı sütü aktif sezona göre gösterilir. Kovanlar, ana arılar ve stok sezon-üstüdür.")) {
-                ForEach(sezonlar, id: \.id) { s in
-                    HStack {
-                        VStack(alignment: .leading) { Text(s.name ?? "Sezon").bold(); Text("\(kisaTarih(sezonBaslangici(s))) \(String(sezonBaslangici(s).prefix(4))) başlangıç").font(.caption).foregroundStyle(.secondary) }
-                        Spacer()
-                        if s.id == depo.ayarlar.activeSeason { Rozet(metin: "Aktif", tur: .iyi) }
-                        else { Button("Aktifleştir") { depo.ayarDegistir { $0.activeSeason = s.id } }.buttonStyle(.bordered) }
+            Section {
+                SayfaKahramani(gorsel: "SimgeSezon", baslik: "Sezonlar", alt: "Hesap dönemleri") {
+                    HStack(spacing: 8) {
+                        OzetKutucuk(simge: "checkmark.circle.fill", etiket: "Aktif sezon", deger: aktif?.name ?? "—", renk: Renk.iyi).layoutPriority(1)
+                        OzetKutucuk(simge: "calendar", etiket: "Sezon", deger: "\(sezonlar.count)", renk: dahaAltin)
                     }
+                    .fixedSize(horizontal: false, vertical: true)
                 }
-                .onDelete { idx in
-                    let s = idx.map { sezonlar[$0].id }.filter { $0 != depo.ayarlar.activeSeason }
-                    depo.degistir { v in v.sezonlar = v.sezonlar.filter { !s.contains($0.id) } }
+                EylemDugmesi(simge: "plus", metin: "Yeni sezon", dolu: true) { form = KimlikKutusu(id: "") }
+            }
+            .listeBasligi()
+            Section(footer: Text("Her sezon kendi başlangıcından bir sonraki sezonun başlangıcına kadar sürer; bitiş kendiliğinden hesaplanır. Satış, gider ve arı sütü aktif sezona göre gösterilir; kovanlar, ana arılar ve stok sezon-üstüdür. Düzenlemek ya da silmek için sezona dokun.")) {
+                ForEach(sezonlar, id: \.id) { s in
+                    let aktifMi = s.id == depo.ayarlar.activeSeason
+                    SimgeliSatir(simge: "calendar", renk: aktifMi ? Renk.iyi : dahaAltin, baslik: s.name ?? "Sezon",
+                                     alt: "\(uzunTarih(sezonBaslangici(s))) – \(sezonBitisi(s, sezonlar).map { uzunTarih($0) } ?? "devam ediyor")") {
+                            if aktifMi { Rozet(metin: "Aktif", tur: .iyi, simge: "checkmark.circle.fill") }
+                            else {
+                                Button("Aktifleştir") { depo.ayarDegistir { $0.activeSeason = s.id } }
+                                    .font(Yazi.kucukOrta).buttonStyle(.borderless).foregroundStyle(Renk.orman2)
+                                    .padding(.horizontal, 10).padding(.vertical, 6).background(Renk.orman2.opacity(0.12), in: Capsule())
+                            }
+                            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Renk.metin3)
+                    }
+                    .onTapGesture { form = KimlikKutusu(id: s.id) }
                 }
             }
         }
-        .toolbar { ToolbarItem(placement: .primaryAction) { Button { yeni = true } label: { Image(systemName: "plus") } } }
-        .sheet(isPresented: $yeni) { SezonFormu() }
+        .sheet(item: $form) { SezonFormu(sezonId: $0.id.isEmpty ? nil : $0.id) }
     }
 }
 
+/// Yeni sezon ya da mevcut sezonu düzenle / sil.
 struct SezonFormu: View {
     @Environment(VeriDeposu.self) private var depo
     @Environment(\.dismiss) private var kapat
+    var sezonId: String? = nil
     @State private var ad = "\(Calendar.current.component(.year, from: Date()) + 1) Sezonu"
     @State private var baslangic = Date()
+    @State private var silOnay = false
+    @State private var yuklendi = false
+
+    private var mevcut: Sezon? { depo.veri.sezonlar.first { $0.id == sezonId } }
+    private var cakisma: Bool { depo.veri.sezonlar.contains { $0.id != sezonId && sezonBaslangici($0) == bugunISO(baslangic) } }
+
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Ad", text: $ad)
-                DatePicker("Başlangıç", selection: $baslangic, displayedComponents: .date)
-                Text("Oluşturulunca aktif sezon olur.").font(.caption).foregroundStyle(.secondary)
+                Section {
+                    TextField("Ad", text: $ad)
+                    DatePicker("Başlangıç", selection: $baslangic, displayedComponents: .date)
+                } footer: {
+                    Text(cakisma ? "Bu tarihte başlayan başka bir sezon var." : mevcut == nil ? "Oluşturulunca aktif sezon olur. Önceki sezon bu tarihten bir gün önce biter." : "Başlangıcı değiştirince önceki sezonun bitişi de kendiliğinden kayar.")
+                }
+                if mevcut != nil, depo.veri.sezonlar.count > 1 {
+                    Section(footer: Text("Satış, gider ve hasat kayıtları silinmez; tarihlerine göre komşu sezonda görünür.")) {
+                        Button("Sezonu sil", role: .destructive) { silOnay = true }
+                    }
+                }
             }
-            .navigationTitle("Yeni Sezon").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(mevcut == nil ? "Yeni Sezon" : "Sezonu Düzenle").navigationBarTitleDisplayMode(.inline)
             .formArkaplani()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Oluştur") {
-                        let id = yeniKimlik()
-                        let yil = Calendar.current.component(.year, from: baslangic)
-                        depo.degistir { v in
-                            v.sezonlar = v.sezonlar + [Sezon(["id": .metin(id), "year": .tam(Int64(yil)), "name": .metin(ad), "active": .bool(true), "start": .metin(bugunISO(baslangic))])]
-                        }
-                        depo.ayarDegistir { $0.activeSeason = id }
-                        kapat()
-                    }.disabled(ad.isEmpty)
+                    Button(mevcut == nil ? "Oluştur" : "Kaydet") { kaydet(); kapat() }
+                        .disabled(ad.trimmingCharacters(in: .whitespaces).isEmpty || cakisma)
                 }
             }
+            .confirmationDialog("\(mevcut?.name ?? "Sezon") silinsin mi?", isPresented: $silOnay, titleVisibility: .visible) {
+                Button("Sil", role: .destructive) { sil(); kapat() }
+            } message: { Text("Kayıtlar silinmez, yalnızca sezon tanımı kalkar.") }
+            .onAppear {
+                guard !yuklendi else { return }
+                yuklendi = true
+                if let m = mevcut { ad = m.name ?? ""; baslangic = isoTarih(sezonBaslangici(m)) ?? Date() }
+            }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
+    }
+
+    private func kaydet() {
+        let yil = Calendar.current.component(.year, from: baslangic)
+        let bas = bugunISO(baslangic)
+        let temiz = ad.trimmingCharacters(in: .whitespaces)
+        if let sezonId {
+            depo.degistir { v in
+                var l = v.sezonlar
+                if let i = l.firstIndex(where: { $0.id == sezonId }) { l[i].name = temiz; l[i].start = bas; l[i].year = yil; v.sezonlar = l }
+            }
+        } else {
+            let id = yeniKimlik()
+            depo.degistir { v in
+                v.sezonlar = v.sezonlar + [Sezon(["id": .metin(id), "year": .tam(Int64(yil)), "name": .metin(temiz), "active": .bool(true), "start": .metin(bas)])]
+            }
+            depo.ayarDegistir { $0.activeSeason = id }
+        }
+    }
+
+    private func sil() {
+        guard let sezonId else { return }
+        depo.degistir { v in v.sezonlar = v.sezonlar.filter { $0.id != sezonId } }
+        if depo.ayarlar.activeSeason == sezonId {
+            let yeni = depo.veri.sezonlar.max { sezonBaslangici($0) < sezonBaslangici($1) }?.id
+            depo.ayarDegistir { $0.activeSeason = yeni }
+        }
     }
 }
 
@@ -158,16 +419,44 @@ struct YedekEkrani: View {
     @State private var mesaj: String?
 
     var body: some View {
+        let son = depo.ayarlar.lastBackup
+        let gun: Int? = son.flatMap { isoTarih($0) }.flatMap { Calendar.current.dateComponents([.day], from: $0, to: Date()).day }
         List {
-            Section(footer: Text("Yedek dosyası web Beebook ile aynı biçimdedir; iki yönde de yüklenebilir.")) {
-                if let s = depo.ayarlar.lastBackup { Text("Son yedek: \(kisaTarih(s))") }
-                Button { disari = true } label: { Label("Yedek al (JSON)", systemImage: "square.and.arrow.up") }
-                Button { balModu = false; iceri = true } label: { Label("Yedek yükle", systemImage: "square.and.arrow.down") }
+            Section {
+                SayfaKahramani(gorsel: "SimgeYedek", baslik: "Yedek", alt: "Verilerini dosyaya al, geri yükle") {
+                    HStack(spacing: 8) {
+                        OzetKutucuk(simge: "clock.arrow.circlepath", etiket: "Son yedek", deger: son.map { uzunTarih(String($0.prefix(10))) } ?? "Hiç alınmadı",
+                                    renk: (gun ?? 999) > 30 ? Renk.uyari : Renk.iyi).layoutPriority(1)
+                        OzetKutucuk(simge: "square.stack.3d.up", etiket: "Kovan", deger: "\(depo.veri.kovanlar.count)", renk: dahaAltin)
+                        OzetKutucuk(simge: "cart", etiket: "Satış", deger: "\(depo.veri.satislar.count)", renk: Renk.orman2)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    if (gun ?? 999) > 30 {
+                        HStack(spacing: 8) {
+                            Image(systemName: "info.circle").foregroundStyle(Renk.uyari)
+                            Text(gun == nil ? "Henüz yedek almadın. Telefon kaybolursa veriler gider; ara sıra yedek al." : "Son yedeğin \(gun!) gün önce. Yeni bir yedek almanı öneririz.")
+                                .font(Yazi.minik).foregroundStyle(Renk.metin2)
+                        }
+                        .padding(.horizontal, 10).padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Renk.uyari.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                }
+                EylemDugmesi(simge: "square.and.arrow.up", metin: "Yedek al (JSON)", dolu: true) { disari = true }
+                EylemDugmesi(simge: "square.and.arrow.down", metin: "Yedek yükle") { balModu = false; iceri = true }
+                Text("Yedek dosyası web, iPhone ve Android BeeBook ile aynı biçimdedir; her yönde yüklenebilir. Yüklemek mevcut verinin yerine geçer.")
+                    .font(Yazi.kucuk).foregroundStyle(Renk.metin3).padding(.horizontal, 6)
             }
-            Section(header: Text("Bal Defterim"), footer: Text("Bal Defterim'den aldığın yedeği (bal-defterim-yedek-….json) yükle: siparişler satışa, hasatlar stoğa, zekatlar zekat kaydına çevrilir. Mevcut kayıtların silinmez; aynı yedeği yeniden yüklersen kopya oluşmaz, güncellenir.")) {
-                Button { balModu = true; iceri = true } label: { Label("Bal Defterim yedeğini içe aktar", systemImage: "tray.and.arrow.down") }
+            .listeBasligi()
+            Section(header: Label("Bal Defterim", systemImage: "arrow.left.arrow.right"), footer: Text("Bal Defterim'den aldığın yedeği (bal-defterim-yedek-….json) yükle: siparişler satışa, hasatlar stoğa, zekatlar zekat kaydına çevrilir. Mevcut kayıtların silinmez; aynı yedeği yeniden yüklersen kopya oluşmaz, güncellenir.")) {
+                Button { balModu = true; iceri = true } label: {
+                    SimgeliSatir(simge: "arrow.left.arrow.right", renk: dahaAltin, baslik: "Bal Defterim yedeğini içe aktar", alt: "Sipariş, hasat ve zekatlar eklenir") {
+                        Image(systemName: "chevron.right").foregroundStyle(Renk.metin3)
+                    }
+                }
+                .buttonStyle(.plain)
             }
-            if let mesaj { Section { Text(mesaj) } }
+            if let mesaj { Section { Label(mesaj, systemImage: "info.circle").foregroundStyle(Renk.metin) } }
         }
         .fileExporter(isPresented: $disari, document: YedekDosyasi(veri: yedekVerisi()), contentType: .json, defaultFilename: "beebook-yedek-\(bugunISO()).json") { s in
             if case .success = s { depo.ayarDegistir { $0.lastBackup = bugunISO() }; mesaj = "Yedek kaydedildi." }
@@ -234,41 +523,80 @@ struct AyarlarEkrani: View {
 
     var body: some View {
         List {
-            Section("Hesap") {
-                if oturum.durum == .hesapsiz {
-                    Text("Hesapsız kullanıyorsun; veriler yalnız bu telefonda.").font(.caption)
-                    Button("Giriş yap ve eşitle") { oturum.girisEkraninaDon() }
-                } else {
-                    LabeledContent("Ad", value: oturum.adSoyad)
-                    LabeledContent("E-posta", value: oturum.epostaGorunen)
-                    if depo.esitleniyor { Label("Eşitleniyor…", systemImage: "arrow.triangle.2.circlepath") }
-                    else if let h = depo.sonHata { Label("Eşitlenemedi: \(h)", systemImage: "exclamationmark.icloud").foregroundStyle(Renk.uyari) }
-                    else { Label("Eşitlendi", systemImage: "checkmark.icloud").foregroundStyle(Renk.iyi) }
+            Section {
+                SayfaKahramani(gorsel: "SimgeAyarlar", baslik: "Ayarlar", alt: "BeeBook \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")") {
+                    if oturum.durum == .hesapsiz {
+                        HStack(spacing: 10) {
+                            Image(systemName: "icloud.slash").font(.system(size: 20)).foregroundStyle(Renk.uyari)
+                            Text("İnternetsiz kullanıyorsun; veriler yalnız bu telefonda.").font(Yazi.kucuk).foregroundStyle(Renk.metin2)
+                        }
+                        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        EylemDugmesi(simge: "person.crop.circle.badge.checkmark", metin: "Giriş yap ve eşitle", dolu: true) { oturum.girisEkraninaDon() }
+                    } else {
+                        HStack(spacing: 10) {
+                            Text(String(oturum.adSoyad.trimmingCharacters(in: .whitespaces).prefix(1)).uppercased(with: Locale(identifier: "tr")))
+                                .font(Yazi.nunito(19, .bold)).foregroundStyle(Renk.acikBal)
+                                .frame(width: 44, height: 44)
+                                .background(LinearGradient(colors: [Renk.orman2, Renk.orman], startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
+                                .overlay(Circle().strokeBorder(Renk.bal, lineWidth: 1.5))
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(oturum.adSoyad).font(Yazi.govdeOrta).lineLimit(1)
+                                Text(oturum.epostaGorunen).font(Yazi.etiket).foregroundStyle(Renk.metin2).lineLimit(1)
+                            }
+                            Spacer(minLength: 4)
+                            let durum: (String, Color, String) = depo.esitleniyor ? ("Eşitleniyor", Renk.bilgi, "arrow.triangle.2.circlepath")
+                                : depo.sonHata != nil ? ("Hata", Renk.uyari, "exclamationmark.icloud") : ("Eşitlendi", Renk.iyi, "checkmark.icloud")
+                            Label(durum.0, systemImage: durum.2).font(Yazi.minik).foregroundStyle(durum.1)
+                                .padding(.horizontal, 8).padding(.vertical, 4).background(durum.1.opacity(0.12), in: Capsule())
+                        }
+                        .padding(12)
+                        .background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        if let h = depo.sonHata { Text("Eşitlenemedi: \(h)").font(Yazi.minik).foregroundStyle(Renk.uyari) }
+                    }
                 }
             }
-            Section("Profil") {
+            .listeBasligi()
+            Section(header: Label("Profil", systemImage: "person")) {
                 TextField("Adın", text: Binding(get: { depo.ayarlar.userName ?? "" }, set: { v in depo.ayarDegistir { $0.userName = v } }))
                 TextField("Telefon", text: Binding(get: { depo.ayarlar.userPhone ?? "" }, set: { v in depo.ayarDegistir { $0.userPhone = v } })).keyboardType(.phonePad)
                 TextField("Hava durumu şehri", text: Binding(get: { depo.ayarlar.city ?? "" }, set: { v in depo.ayarDegistir { $0.city = v } }))
             }
-            Section("Kovan tipleri") {
-                ForEach(depo.kovanTipleri, id: \.self) { Text($0) }
+            Section(header: Label("Kovan tipleri", systemImage: "square.stack.3d.up"), footer: Text("Silmek için sola kaydır; sırayı değiştirmek için basılı tutup sürükle.")) {
+                ForEach(depo.kovanTipleri, id: \.self) { t in Label(t, systemImage: "square.stack.3d.up").foregroundStyle(Renk.metin) }
                     .onDelete { i in let l = depo.kovanTipleri; depo.ayarDegistir { a in a.hiveTypes = l.enumerated().filter { !i.contains($0.offset) }.map(\.element) } }
                     .onMove { f, t in var l = depo.kovanTipleri; l.move(fromOffsets: f, toOffset: t); depo.ayarDegistir { $0.hiveTypes = l } }
-                HStack { TextField("Yeni tip", text: $yeniTip); Button("Ekle") { let l = depo.kovanTipleri + [yeniTip]; depo.ayarDegistir { $0.hiveTypes = l }; yeniTip = "" }.disabled(yeniTip.isEmpty) }
+                HStack {
+                    TextField("Yeni tip", text: $yeniTip)
+                    Button { let l = depo.kovanTipleri + [yeniTip.trimmingCharacters(in: .whitespaces)]; depo.ayarDegistir { $0.hiveTypes = l }; yeniTip = "" } label: {
+                        Image(systemName: "plus.circle.fill").font(.system(size: 26)).foregroundStyle(yeniTip.isEmpty ? Renk.krem2 : Renk.orman2)
+                    }
+                    .buttonStyle(.borderless).disabled(yeniTip.isEmpty)
+                }
             }
-            Section("Arı ırkları") {
-                ForEach(depo.irklar, id: \.self) { Text($0) }
+            Section(header: Label("Arı ırkları", systemImage: "ladybug"), footer: Text("Silmek için sola kaydır.")) {
+                ForEach(depo.irklar, id: \.self) { t in Label(t, systemImage: "ladybug").foregroundStyle(Renk.metin) }
                     .onDelete { i in let l = depo.irklar; depo.ayarDegistir { a in a.beeRaces = l.enumerated().filter { !i.contains($0.offset) }.map(\.element) } }
-                HStack { TextField("Yeni ırk", text: $yeniIrk); Button("Ekle") { let l = depo.irklar + [yeniIrk]; depo.ayarDegistir { $0.beeRaces = l }; yeniIrk = "" }.disabled(yeniIrk.isEmpty) }
+                HStack {
+                    TextField("Yeni ırk", text: $yeniIrk)
+                    Button { let l = depo.irklar + [yeniIrk.trimmingCharacters(in: .whitespaces)]; depo.ayarDegistir { $0.beeRaces = l }; yeniIrk = "" } label: {
+                        Image(systemName: "plus.circle.fill").font(.system(size: 26)).foregroundStyle(yeniIrk.isEmpty ? Renk.krem2 : Renk.orman2)
+                    }
+                    .buttonStyle(.borderless).disabled(yeniIrk.isEmpty)
+                }
             }
             Section {
-                Button("Gizlilik politikası") { ac(Sabitler.gizlilik) }
-                if oturum.durum == .girisli {
-                    Button("Çıkış yap") { Task { await oturum.cikis() } }
-                    Button("Hesabımı sil", role: .destructive) { silOnay1 = true }
+                Button { ac(Sabitler.gizlilik) } label: {
+                    SimgeliSatir(simge: "hand.raised", renk: Renk.orman2, baslik: "Gizlilik politikası") { Image(systemName: "chevron.right").foregroundStyle(Renk.metin3) }
                 }
-            } footer: { Text("BeeBook \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")") }
+                .buttonStyle(.plain)
+                if oturum.durum == .girisli {
+                    Button { Task { await oturum.cikis() } } label: { SimgeliSatir(simge: "rectangle.portrait.and.arrow.right", renk: Renk.orman2, baslik: "Çıkış yap") }
+                        .buttonStyle(.plain)
+                    Button { silOnay1 = true } label: { SimgeliSatir(simge: "trash", renk: Renk.kotu, baslik: "Hesabımı sil", alt: "Tüm verilerin kalıcı olarak silinir") }
+                        .buttonStyle(.plain)
+                }
+            } header: { Label("Uygulama", systemImage: "info.circle") } footer: { Text("BeeBook \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")") }
             if let mesaj { Section { Text(mesaj) } }
         }
         .confirmationDialog("Hesabın silinsin mi?", isPresented: $silOnay1, titleVisibility: .visible) {

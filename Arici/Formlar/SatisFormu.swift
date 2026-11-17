@@ -35,7 +35,8 @@ struct SatisFormu: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Müşteri") {
+                Section { satisOzeti }.listeBasligi()
+                Section {
                     HStack {
                         TextField("Ad", text: $musteri).textInputAutocapitalization(.words)
                         Button { rehber = true } label: { Label("Rehber", systemImage: "person.crop.circle.badge.plus") }
@@ -54,9 +55,9 @@ struct SatisFormu: View {
                     }
                     TextField("Telefon (isteğe bağlı)", text: $telefon).keyboardType(.phonePad)
                     DatePicker("Tarih", selection: $tarih, displayedComponents: .date)
-                }
+                } header: { Label("Müşteri", systemImage: "person") }
                 ForEach($kalemler) { $k in
-                    Section(kalemler.count > 1 ? "Ürün \((kalemler.firstIndex(of: k) ?? 0) + 1)" : "Ürün") {
+                    Section(header: Label(kalemler.count > 1 ? "Ürün \((kalemler.firstIndex(of: k) ?? 0) + 1)" : "Ürün", systemImage: "basket")) {
                         KalemDuzenleyici(kalem: $k, urunler: urunler.filter { $0.pasif != true || $0.v == k.urunId }, ucretsiz: ucretsiz)
                         if kalemler.count > 1 {
                             Button("Bu ürünü çıkar", role: .destructive) { kalemler.removeAll { $0.id == k.id } }
@@ -64,9 +65,9 @@ struct SatisFormu: View {
                     }
                 }
                 if satisId == nil {
-                    Section { Button { kalemEkle() } label: { Label("Başka ürün ekle", systemImage: "plus.circle") } }
+                    Section { EylemDugmesi(simge: "cart.badge.plus", metin: "Başka ürün ekle") { kalemEkle() } }.listeBasligi()
                 }
-                Section("Ödeme") {
+                Section(header: Label("Ödeme", systemImage: "banknote")) {
                     Picker("Ödeme", selection: $odeme) {
                         Text("Ödendi").tag("paid"); Text("Bekliyor").tag("pending"); Text("Kısmi").tag("partial")
                         Text("Hediye").tag("hediye"); Text("Zekat").tag("zekat")
@@ -104,6 +105,33 @@ struct SatisFormu: View {
     }
 
     // MARK: Hesap
+
+    /// Üst özet: müşteri baş harfleri + canlı toplam.
+    private var satisOzeti: some View {
+        let ad = musteri.trimmingCharacters(in: .whitespaces)
+        let bas = String(ad.split(separator: " ").prefix(2).compactMap(\.first)).uppercased(with: Locale(identifier: "tr"))
+        return HStack(spacing: 12) {
+            Group {
+                if bas.isEmpty { Image(systemName: "person").font(.system(size: 22)).foregroundStyle(Renk.metin3) }
+                else { Text(bas).font(Yazi.nunito(19, .bold)).foregroundStyle(.white) }
+            }
+            .frame(width: 52, height: 52)
+            .background(ad.isEmpty ? Renk.krem2 : MusteriKartiGorunumu.renkler[ad.unicodeScalars.reduce(0) { $0 + Int($1.value) } % MusteriKartiGorunumu.renkler.count], in: Circle())
+            .overlay(Circle().strokeBorder(Renk.bal, lineWidth: 2))
+            .padding(.leading, 30)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(ad.isEmpty ? "Müşteri seç" : ad).font(Yazi.nunito(18, .bold)).foregroundStyle(Renk.orman).lineLimit(1)
+                Text("\(kalemler.count) ürün · \(kisaTarih(bugunISO(tarih)))").font(Yazi.minik).foregroundStyle(Renk.metin2)
+            }
+            Spacer(minLength: 4)
+            VStack(alignment: .trailing, spacing: 0) {
+                Text("Toplam").font(Yazi.minik).foregroundStyle(Renk.metin2)
+                Text(tl(genelToplam)).font(Yazi.nunito(22, .bold)).foregroundStyle(dahaAltin).lineLimit(1).minimumScaleFactor(0.6)
+            }
+        }
+        .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, 18)
+        .dogaZemini()
+    }
 
     private func tutar(_ k: SatisKalemi) -> Double { ucretsiz ? 0 : (k.toplamElle ?? k.miktar * k.fiyat) }
     private var genelToplam: Double { kalemler.reduce(0) { $0 + tutar($1) } }

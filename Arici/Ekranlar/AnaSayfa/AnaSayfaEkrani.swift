@@ -161,8 +161,9 @@ struct OzetKartlari: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity)
-        .background(Renk.krem, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: .black.opacity(0.22), radius: 9, y: 6)
+        .background { Image("OzetPaneli").resizable() }
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: Renk.bal.opacity(0.45), radius: 8, y: 4)
         .foregroundStyle(Renk.metin)
         .accessibilityElement(children: .combine)
     }
@@ -180,8 +181,9 @@ struct OzetKartlari: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity)
-        .background(Renk.krem, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: .black.opacity(0.22), radius: 9, y: 6)
+        .background { Image("OzetPaneli").resizable() }
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: Renk.bal.opacity(0.45), radius: 8, y: 4)
         .foregroundStyle(Renk.metin)
         .accessibilityElement(children: .combine)
     }

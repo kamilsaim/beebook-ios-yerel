@@ -55,10 +55,9 @@ struct StokGorunumu: View {
     private func urunOzeti(_ urunler: [UrunTanimi]) -> some View {
         let toplam = urunler.reduce(0) { $0 + max(0, stokSeviyesi(depo.veri, urun: $1.v)) * (depo.ayarlar.stockPrices[$1.v] ?? 0) }
         let eklenebilir = urunEklenebilir(depo.ayarlar)
-        return Kart {
+        return DogaKart {
             HStack {
-                Image(systemName: "shippingbox.fill").foregroundStyle(Renk.bal)
-                Text("Ürün Stok Özeti").font(Yazi.kartBaslik)
+                BolumBasligi(simge: "shippingbox.fill", baslik: "Ürün Stok Özeti")
                 Spacer(minLength: 4)
                 HStack(spacing: 5) {
                     Text("Toplam").font(Yazi.minik).foregroundStyle(Color(white: 0.85))
@@ -123,10 +122,9 @@ struct StokGorunumu: View {
 
     private func sonSatislar(_ urunler: [UrunTanimi]) -> some View {
         let son = depo.sezonda(depo.veri.satislar).sorted { ($0.date ?? "") > ($1.date ?? "") }.prefix(3)
-        return Kart {
+        return DogaKart {
             HStack {
-                Image(systemName: "cart").foregroundStyle(Renk.orman2)
-                Text("Son Satışlar").font(Yazi.kartBaslik)
+                BolumBasligi(simge: "cart", baslik: "Son Satışlar")
                 Spacer()
                 Button(action: satislaraGit) {
                     HStack(spacing: 2) { Text("Tümünü gör"); Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold)) }
@@ -224,10 +222,9 @@ struct StokGorunumu: View {
         }
         let son = tumHareketler ? tum : Array(tum.prefix(6))
         let hareketliUrunler = urunler.filter { u in sezonHareketi.contains { $0.product == u.v } }
-        return Kart {
+        return DogaKart {
             HStack {
-                Image(systemName: "arrow.left.arrow.right").foregroundStyle(Renk.orman2)
-                Text("Stok Hareketleri").font(Yazi.kartBaslik)
+                BolumBasligi(simge: "arrow.left.arrow.right", baslik: "Stok Hareketleri")
                 Spacer()
                 Button("Rapor") { rapor = true }.font(Yazi.etiket).foregroundStyle(Renk.orman2)
             }
@@ -315,10 +312,9 @@ struct StokGorunumu: View {
         let turler = Dictionary(grouping: buAy, by: { $0.type ?? "diger" })
             .map { GiderTuru(ad: depo.giderTurAdi($0.key), tutar: $0.value.reduce(0) { $0 + ($1.amount ?? 0) }) }
             .sorted { $0.tutar > $1.tutar }
-        return Kart {
+        return DogaKart {
             HStack {
-                Image(systemName: "doc.text").foregroundStyle(Renk.orman2)
-                Text("Gider Özeti").font(Yazi.kartBaslik)
+                BolumBasligi(simge: "doc.text", baslik: "Gider Özeti")
                 Spacer()
                 Text(sezonAdi).font(Yazi.etiket).foregroundStyle(Renk.metin3)
             }

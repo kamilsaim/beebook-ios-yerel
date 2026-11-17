@@ -91,7 +91,7 @@ struct DahaEkrani: View {
                 }
                 .formArkaplani()
                 .navigationTitle(s.ad)
-                .navigationBarTitleDisplayMode(.large)
+                .navigationBarTitleDisplayMode(.inline)
                 .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 90) }
             }
         }
@@ -111,24 +111,31 @@ struct AriSutuEkrani: View {
     @State private var form: KimlikKutusu?
     var body: some View {
         let hasatlar = depo.sezonda(depo.veri.hasatlar).sorted { ($0.date ?? "") > ($1.date ?? "") }
+        let toplam = hasatlar.reduce(0) { $0 + ($1.amount ?? 0) }
         List {
             Section {
-                HStack { Text("Sezon toplamı"); Spacer(); Text(miktar(hasatlar.reduce(0) { $0 + ($1.amount ?? 0) }, "gr")).bold() }
-                HStack { Text("Stokta"); Spacer(); Text(miktar(stokSeviyesi(depo.veri, urun: "ari_sutu"), "gr")) }
+                SayfaKahramani(gorsel: "SimgeAriSutu", baslik: "Arı Sütü", alt: "Hasat kayıtları ve stok") {
+                    HStack(spacing: 8) {
+                        OzetKutucuk(simge: "scalemass", etiket: "Sezon toplamı", deger: miktar(toplam, "gr"), renk: dahaAltin)
+                        OzetKutucuk(simge: "shippingbox", etiket: "Stokta", deger: miktar(stokSeviyesi(depo.veri, urun: "ari_sutu"), "gr"), renk: Renk.orman2)
+                        OzetKutucuk(simge: "drop", etiket: "Hasat", deger: "\(hasatlar.count)", renk: Renk.bilgi)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+                EylemDugmesi(simge: "plus", metin: "Yeni hasat", dolu: true) { form = KimlikKutusu(id: "") }
             }
-            Section("Hasatlar") {
+            .listeBasligi()
+            Section(header: Label("Hasatlar", systemImage: "drop")) {
                 if hasatlar.isEmpty { Text("Bu sezon hasat yok").foregroundStyle(.secondary) }
                 ForEach(hasatlar, id: \.id) { h in
                     Button { form = KimlikKutusu(id: h.id) } label: {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(miktar(h.amount ?? 0, "gr")).bold()
-                                Text([kisaTarih(h.date ?? ""), h.hiveCount.map { "\(Int($0)) kovan" }, h.note].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
+                        SimgeliSatir(simge: "drop.fill", renk: dahaAltin, baslik: h.date.map { "\(kisaTarih($0)) \($0.prefix(4))" } ?? "Tarihsiz",
+                                     alt: [h.hiveCount.map { "\(Int($0)) kovan" }, h.note].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")) {
+                            Text(miktar(h.amount ?? 0, "gr")).font(Yazi.nunito(14, .bold)).foregroundStyle(dahaAltin)
+                                .padding(.horizontal, 10).padding(.vertical, 5).background(Renk.bal.opacity(0.16), in: Capsule())
                         }
                     }
-                    .foregroundStyle(.primary)
+                    .buttonStyle(.plain)
                 }
                 .onDelete { idx in
                     let silinen = idx.map { hasatlar[$0].id }
@@ -139,7 +146,6 @@ struct AriSutuEkrani: View {
                 }
             }
         }
-        .toolbar { ToolbarItem(placement: .primaryAction) { Button { form = KimlikKutusu(id: "") } label: { Image(systemName: "plus") } } }
         .sheet(item: $form) { HasatFormu(hasatId: $0.id.isEmpty ? nil : $0.id) }
     }
 }
@@ -197,35 +203,43 @@ struct HasatFormu: View {
 struct EnvanterEkrani: View {
     @Environment(VeriDeposu.self) private var depo
     @State private var form: KimlikKutusu?
-    private let durumlar = [("saglam", "Sağlam", RozetTuru.iyi), ("tamir", "Tamirde", .uyari), ("eksik", "Eksik", .kotu)]
+    private let durumlar: [(String, String, RozetTuru, Color, String)] = [
+        ("saglam", "Sağlam", .iyi, Renk.iyi, "checkmark.circle.fill"),
+        ("tamir", "Tamirde", .uyari, Renk.uyari, "wrench.and.screwdriver"),
+        ("eksik", "Eksik", .kotu, Renk.kotu, "exclamationmark.triangle"),
+    ]
     var body: some View {
-        let l = depo.veri.envanter
+        let l = depo.veri.envanter.sorted { ($0.name ?? "") < ($1.name ?? "") }
         List {
             Section {
-                HStack {
-                    ForEach(durumlar, id: \.0) { d in
-                        VStack { Text("\(l.filter { ($0.status ?? "saglam") == d.0 }.count)").font(.title3.bold()); Text(d.1).font(.caption) }.frame(maxWidth: .infinity)
-                    }
-                }
-            }
-            Section("Malzemeler") {
-                if l.isEmpty { Text("Ballık, körük, elbise… ekle").foregroundStyle(.secondary) }
-                ForEach(l, id: \.id) { k in
-                    Button { form = KimlikKutusu(id: k.id) } label: {
-                        HStack {
-                            VStack(alignment: .leading) { Text(k.name ?? "").bold(); if let n = k.note, !n.isEmpty { Text(n).font(.caption).foregroundStyle(.secondary) } }
-                            Spacer()
-                            Text("\(Int(k.qty ?? 0))")
-                            let d = durumlar.first { $0.0 == (k.status ?? "saglam") }
-                            Rozet(metin: d?.1 ?? "", tur: d?.2 ?? .notr)
+                SayfaKahramani(gorsel: "SimgeEnvanter", baslik: "Envanter", alt: "\(l.count) malzeme · \(l.reduce(0) { $0 + Int($1.qty ?? 0) }) adet") {
+                    HStack(spacing: 8) {
+                        ForEach(durumlar, id: \.0) { d in
+                            OzetKutucuk(simge: d.4, etiket: d.1, deger: "\(l.filter { ($0.status ?? "saglam") == d.0 }.count)", renk: d.3)
                         }
                     }
-                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+                EylemDugmesi(simge: "plus", metin: "Yeni malzeme", dolu: true) { form = KimlikKutusu(id: "") }
+            }
+            .listeBasligi()
+            Section(header: Label("Malzemeler", systemImage: "shippingbox")) {
+                if l.isEmpty { Text("Ballık, körük, elbise… ekle").foregroundStyle(.secondary) }
+                ForEach(l, id: \.id) { k in
+                    let d = durumlar.first { $0.0 == (k.status ?? "saglam") } ?? durumlar[0]
+                    Button { form = KimlikKutusu(id: k.id) } label: {
+                        SimgeliSatir(simge: "shippingbox", renk: d.3, baslik: k.name ?? "", alt: k.note) {
+                            VStack(alignment: .trailing, spacing: 3) {
+                                Text("\(Int(k.qty ?? 0)) adet").font(Yazi.nunito(14, .bold))
+                                Rozet(metin: d.1, tur: d.2)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
                 }
                 .onDelete { idx in let s = idx.map { l[$0].id }; depo.degistir { v in v.envanter = v.envanter.filter { !s.contains($0.id) } } }
             }
         }
-        .toolbar { ToolbarItem(placement: .primaryAction) { Button { form = KimlikKutusu(id: "") } label: { Image(systemName: "plus") } } }
         .sheet(item: $form) { EnvanterFormu(kalemId: $0.id.isEmpty ? nil : $0.id) }
     }
 }
@@ -275,35 +289,71 @@ struct EnvanterFormu: View {
 
 // MARK: - Giderler
 
+/// Gider türü → SF Symbol.
+func giderSimgesi(_ tur: String?) -> String {
+    switch tur {
+    case "yem": return "leaf"
+    case "seker": return "cube"
+    case "ilac": return "cross.vial"
+    case "mazot": return "fuelpump"
+    case "ekipman": return "wrench.and.screwdriver"
+    case "arac": return "truck.box"
+    case "diger": return "ellipsis"
+    default: return "tag"
+    }
+}
+
+/// "🌾 Yem" → "Yem" (ikon zaten var).
+func emojisiz(_ s: String) -> String {
+    let a = String(s.drop { !$0.isLetter && !$0.isNumber }).trimmingCharacters(in: .whitespaces)
+    return a.isEmpty ? s : a
+}
+
 struct GiderlerEkrani: View {
     @Environment(VeriDeposu.self) private var depo
     @State private var form: KimlikKutusu?
     var body: some View {
         let g = depo.sezonda(depo.veri.giderler).sorted { ($0.date ?? "") > ($1.date ?? "") }
+        let toplam = g.reduce(0) { $0 + ($1.amount ?? 0) }
+        let bekleyen = g.reduce(0) { $0 + kalan($1.ham) }
+        let satirlar = giderRaporu(g, turler: depo.giderTurleri.map(\.v)).sorted { $0.toplam > $1.toplam }
+        let enBuyuk = max(1, satirlar.map(\.toplam).max() ?? 1)
         List {
-            Section("Sezon özeti") {
-                HStack { Text("Toplam gider"); Spacer(); Text(tl(g.reduce(0) { $0 + ($1.amount ?? 0) })).bold() }
-                ForEach(giderRaporu(g, turler: depo.giderTurleri.map(\.v)), id: \.tur) { r in
-                    HStack { Text(depo.giderTurAdi(r.tur)); Spacer(); Text("\(r.adet) · \(tl(r.toplam))").foregroundStyle(.secondary) }
+            Section {
+                SayfaKahramani(gorsel: "SimgeGider", baslik: "Giderler", alt: "Sezon harcamaları") {
+                    HStack(spacing: 8) {
+                        OzetKutucuk(simge: "doc.text", etiket: "Toplam gider", deger: tl(toplam), renk: Renk.kotu)
+                        OzetKutucuk(simge: "creditcard", etiket: "Ödenecek", deger: tl(bekleyen), renk: bekleyen > 0 ? Renk.uyari : Renk.iyi)
+                        OzetKutucuk(simge: "calendar", etiket: "Kayıt", deger: "\(g.count)", renk: Renk.bilgi)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    if !satirlar.isEmpty {
+                        VStack(spacing: 4) {
+                            ForEach(satirlar, id: \.tur) { r in
+                                CubukSatiri(simge: giderSimgesi(r.tur), ad: emojisiz(depo.giderTurAdi(r.tur)), alt: "\(r.adet) kayıt", deger: tl(r.toplam), oran: r.toplam / enBuyuk, renk: Renk.kotu.opacity(0.75))
+                            }
+                        }
+                        .padding(10)
+                        .background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Renk.krem2))
+                    }
                 }
+                EylemDugmesi(simge: "plus", metin: "Yeni gider", dolu: true) { form = KimlikKutusu(id: "") }
             }
-            Section("Kayıtlar") {
+            .listeBasligi()
+            Section(header: Label("Kayıtlar", systemImage: "doc.text")) {
                 if g.isEmpty { Text("Bu sezon gider yok").foregroundStyle(.secondary) }
                 ForEach(g, id: \.id) { k in
                     Button { form = KimlikKutusu(id: k.id) } label: {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(depo.giderTurAdi(k.type)).bold()
-                                Text([kisaTarih(k.date ?? ""), k.desc].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            VStack(alignment: .trailing) {
-                                Text(tl(k.amount ?? 0)).bold()
+                        SimgeliSatir(simge: giderSimgesi(k.type), renk: Renk.kotu, baslik: emojisiz(depo.giderTurAdi(k.type)),
+                                     alt: [kisaTarih(k.date ?? ""), k.desc].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")) {
+                            VStack(alignment: .trailing, spacing: 3) {
+                                Text(tl(k.amount ?? 0)).font(Yazi.nunito(15, .bold))
                                 if kalan(k.ham) > 0 { Rozet(metin: "\(tl(kalan(k.ham))) kaldı", tur: .uyari) }
                             }
                         }
                     }
-                    .foregroundStyle(.primary)
+                    .buttonStyle(.plain)
                     .swipeActions(edge: .leading) {
                         if kalan(k.ham) > 0 {
                             Button { depo.degistir { v in var l = v.giderler; if let i = l.firstIndex(where: { $0.id == k.id }) { l[i].payment = "paid"; l[i].paidAmount = nil; v.giderler = l } } } label: { Label("Ödendi", systemImage: "checkmark") }.tint(Renk.iyi)
@@ -313,7 +363,6 @@ struct GiderlerEkrani: View {
                 .onDelete { idx in let s = idx.map { g[$0].id }; depo.degistir { v in v.giderler = v.giderler.filter { !s.contains($0.id) } } }
             }
         }
-        .toolbar { ToolbarItem(placement: .primaryAction) { Button { form = KimlikKutusu(id: "") } label: { Image(systemName: "plus") } } }
         .sheet(item: $form) { GiderFormu(giderId: $0.id.isEmpty ? nil : $0.id) }
     }
 }

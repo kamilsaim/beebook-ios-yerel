@@ -29,12 +29,13 @@ struct CamKart<Icerik: View>: View {
 }
 
 struct KartBasligi: View {
+    @Environment(\.baslikGirinti) private var girinti
     let baslik: String
     var baglanti: String? = nil
     var eylem: (() -> Void)? = nil
     var body: some View {
         HStack {
-            Text(baslik).font(Yazi.kartBaslik)
+            Text(baslik).font(Yazi.kartBaslik).padding(.leading, girinti)
             Spacer()
             if let baglanti {
                 Button(baglanti) { eylem?() }.font(Yazi.kucukOrta).foregroundStyle(Renk.orman2)
@@ -48,13 +49,18 @@ enum RozetTuru { case iyi, uyari, kotu, bilgi, mor, notr }
 struct Rozet: View {
     let metin: String
     var tur: RozetTuru = .notr
+    /// SF Symbol adı; verilirse metnin soluna küçük ikon.
+    var simge: String? = nil
+    var arkaRenk: Color? = nil
     var body: some View {
-        Text(metin)
-            .font(Yazi.minik)
-            .lineLimit(1)
-            .padding(.horizontal, 8).padding(.vertical, 3)
-            .foregroundStyle(on)
-            .background(arka, in: Capsule())
+        HStack(spacing: 4) {
+            if let simge { Image(systemName: simge).font(.system(size: 10, weight: .semibold)) }
+            Text(metin).lineLimit(1)
+        }
+        .font(Yazi.minik)
+        .padding(.horizontal, simge == nil ? 8 : 7).padding(.vertical, simge == nil ? 3 : 4)
+        .foregroundStyle(on)
+        .background(arkaRenk ?? arka, in: Capsule())
     }
     private var arka: Color {
         switch tur {

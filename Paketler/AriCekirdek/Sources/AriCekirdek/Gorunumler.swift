@@ -19,6 +19,8 @@ public struct Kovan: HamKayitli, Equatable, Sendable {
     public var floors: Double? { get { sayi("floors") } set { sayiYaz("floors", newValue) } }
     public var notes: String? { get { metin("notes") } set { metinYaz("notes", newValue) } }
     public var createdAt: String? { get { metin("createdAt") } set { metinYaz("createdAt", newValue) } }
+    /// Öne çıkan (yıldızlı) kovan; false iken alan silinir.
+    public var starred: Bool { get { bool("starred") == true } set { boolYaz("starred", newValue ? true : nil) } }
 }
 
 public struct Satis: HamKayitli, Equatable, Sendable {

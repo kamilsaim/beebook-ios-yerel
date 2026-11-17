@@ -28,7 +28,8 @@ struct KovanFormu: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
+                Section { onizleme }.listeBasligi()
+                Section(header: Label("Kovan", systemImage: "square.stack.3d.up")) {
                     HStack {
                         TextField("Kovan no", text: $num).keyboardType(.numbersAndPunctuation)
                         Button { tarayici = true } label: { Image(systemName: "barcode.viewfinder") }
@@ -37,20 +38,25 @@ struct KovanFormu: View {
                     Picker("Ana arı", selection: $anaDurum) { ForEach(durumlar, id: \.0) { Text($0.1).tag($0.0) } }
                 }
                 if anaDurum != "empty" {
-                    Section("Ana arı") {
+                    Section(header: Label("Ana arı", systemImage: "crown")) {
                         Picker("Irk", selection: $irk) { Text("—").tag(""); ForEach(irkListesi, id: \.self) { Text($0) } }
-                        TextField("Kuşak (F1, F2…)", text: $kusak)
-                        TextField("Ana yılı", text: $yil).keyboardType(.numberPad)
+                        Picker("Kuşak", selection: $kusak) {
+                            Text("—").tag("")
+                            ForEach(kusakSecenekleri + (kusak.isEmpty || kusakSecenekleri.contains(kusak) ? [] : [kusak]), id: \.self) { Text($0) }
+                        }
+                        YilAdim(etiket: "Ana yılı", yil: $yil)
                             .onChange(of: yil) { _, y in if let n = Int(y), y.count == 4 { renk = anaRengi(yil: n) } }
-                        Picker("Renk", selection: $renk) { ForEach(renkler, id: \.0) { Text($0.1).tag($0.0) } }
+                        RenkSecici(secenekler: renkler, secili: $renk)
                     }
-                    Section("Koloni") {
+                    Section(header: Label("Koloni", systemImage: "hexagon")) {
                         Stepper("Güç: \(guc)/5", value: $guc, in: 1...5)
-                        TextField("Çerçeve sayısı", text: $cerceve).keyboardType(.numberPad)
+                        Stepper(value: Binding(get: { Int(cerceve) ?? 0 }, set: { cerceve = $0 > 0 ? String($0) : "" }), in: 0...40) {
+                            HStack { Text("Çerçeve"); Spacer(); Text(cerceve.isEmpty ? "—" : cerceve).font(Yazi.nunito(17, .bold)).foregroundStyle(Renk.orman2) }
+                        }
                         Stepper("Kat: \(kat)", value: $kat, in: 1...4)
                     }
                 }
-                Section("Notlar") { TextField("Not", text: $not, axis: .vertical) }
+                Section(header: Label("Notlar", systemImage: "note.text")) { TextField("Not", text: $not, axis: .vertical) }
                 if kovanId != nil {
                     Section { Button("Kovanı sil", role: .destructive) { silOnay = true } }
                 }
@@ -72,6 +78,28 @@ struct KovanFormu: View {
         }
     }
 
+    /// Canlı önizleme: seçilen tip ve kata göre kovan görseli.
+    private var onizleme: some View {
+        HStack(spacing: 12) {
+            Image(kovanGorselAdi(tip: tip, kat: kat)).resizable().scaledToFit().frame(width: 96, height: 104)
+                .grayscale(anaDurum == "empty" ? 1 : 0).opacity(anaDurum == "empty" ? 0.6 : 1)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(num.trimmingCharacters(in: .whitespaces).isEmpty ? "Kovan" : "Kovan \(num.trimmingCharacters(in: .whitespaces))")
+                    .font(Yazi.nunito(22, .bold)).foregroundStyle(Renk.orman).lineLimit(1)
+                Text("\(tip) · \(kat) kat").font(Yazi.kucuk).foregroundStyle(Renk.metin2).lineLimit(1)
+                HStack(spacing: 5) {
+                    Rozet(metin: durumlar.first { $0.0 == anaDurum }?.1 ?? "", tur: anaDurum == "yes" ? .iyi : anaDurum == "no" ? .kotu : .notr)
+                    if anaDurum != "empty", !irk.isEmpty {
+                        Rozet(metin: [irk, kusak].filter { !$0.isEmpty }.joined(separator: " · "), simge: "ladybug", arkaRenk: Renk.bal.opacity(0.22))
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 18)
+        .dogaZemini()
+    }
+
     private var tipListesi: [String] { ensure(depo.kovanTipleri, tip) }
     private var irkListesi: [String] { ensure(depo.irklar, irk) }
     private func ensure(_ l: [String], _ v: String) -> [String] { v.isEmpty || l.contains(v) ? l : l + [v] }
@@ -81,7 +109,7 @@ struct KovanFormu: View {
         yuklendi = true
         if let k = depo.kovan(kovanId) {
             num = k.num; tip = k.type ?? tip; anaDurum = k.queenStatus == "new" ? "bakire" : (k.queenStatus ?? "yes")
-            renk = k.queenColor ?? "white"; guc = Int(k.strength ?? "3") ?? 3; irk = k.race ?? ""; kusak = k.generation ?? ""
+            renk = k.queenColor ?? "white"; guc = Int(k.strength ?? "3") ?? 3; irk = k.race ?? ""; kusak = kusakDuzelt(k.generation)
             yil = k.year ?? ""; cerceve = k.frames.map { String(Int($0)) } ?? ""; kat = k.katSayisi; not = k.notes ?? ""
         } else {
             let enBuyuk = depo.veri.kovanlar.map(\.numara).filter { $0 != Int.max }.max() ?? 0
@@ -179,5 +207,61 @@ struct TopluKovanFormu: View {
             }
             v.kovanlar = v.kovanlar + yeni
         }
+    }
+}
+
+/// Ana yılı: ✕ temizle, − yıl +; altında "bu yıl" / "N yaş". Boşken ilk dokunuş bu yılı yazar.
+struct YilAdim: View {
+    let etiket: String
+    @Binding var yil: String
+    private var buYil: Int { Calendar.current.component(.year, from: Date()) }
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(etiket)
+            Spacer()
+            if !yil.isEmpty {
+                Button { yil = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Renk.metin3) }.buttonStyle(.borderless)
+            }
+            adim("minus") { yil = String(max(1990, (Int(yil) ?? buYil + 1) - 1)) }
+            VStack(spacing: 0) {
+                Text(yil.isEmpty ? "—" : yil).font(Yazi.nunito(18, .bold)).foregroundStyle(Renk.orman2)
+                if let y = Int(yil) { Text(buYil - y <= 0 ? "bu yıl" : "\(buYil - y) yaş").font(Yazi.minik).foregroundStyle(Renk.metin3) }
+            }
+            .frame(minWidth: 54)
+            adim("plus") { yil = String(min(buYil, (Int(yil) ?? buYil - 1) + 1)) }
+        }
+    }
+    private func adim(_ s: String, _ f: @escaping () -> Void) -> some View {
+        Button(action: f) {
+            Image(systemName: s).font(.system(size: 14, weight: .bold)).foregroundStyle(Renk.orman2)
+                .frame(width: 34, height: 34).background(Renk.orman2.opacity(0.12), in: Circle())
+        }
+        .buttonStyle(.borderless)
+    }
+}
+
+/// Ana arı rengi: renkli daireler, seçilende ✓; boyasız ∅.
+struct RenkSecici: View {
+    let secenekler: [(String, String)]
+    @Binding var secili: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack { Text("Renk"); Spacer(); Text(secenekler.first { $0.0 == secili }?.1 ?? "").foregroundStyle(Renk.metin2) }
+            HStack(spacing: 10) {
+                ForEach(secenekler, id: \.0) { kod, ad in
+                    Button { secili = kod } label: {
+                        ZStack {
+                            Circle().fill(kod == "unpainted" ? Color(white: 0.93) : Renk.ana(kod)).frame(width: 38, height: 38)
+                                .overlay(Circle().strokeBorder(secili == kod ? Renk.orman2 : .black.opacity(0.2), lineWidth: secili == kod ? 3 : 1))
+                            if kod == "unpainted" { Text("∅").font(.system(size: 17)).foregroundStyle(Renk.metin3) }
+                            if secili == kod { Image(systemName: "checkmark").font(.system(size: 14, weight: .bold)).foregroundStyle(kod == "white" || kod == "yellow" || kod == "unpainted" ? Renk.orman : .white) }
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(ad)
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 }

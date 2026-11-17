@@ -104,12 +104,15 @@ struct KovanlarEkrani: View {
         return s
     }
 
-    private var tumKovanlar: [Kovan] { depo.veri.kovanlar.sorted { $0.numara < $1.numara } }
+    private var tumKovanlar: [Kovan] {
+        depo.veri.kovanlar.sorted { a, b in a.starred != b.starred ? a.starred : (a.numara != b.numara ? a.numara < b.numara : a.num < b.num) }
+    }
 
     private var suzulmus: [Kovan] {
         var k = tumKovanlar
         switch filtre {
         case "tumu": break
+        case "yildiz": k = k.filter(\.starred)
         case "anasiz": k = k.filter { $0.queenStatus == "no" }
         case "bakire": k = k.filter { ["bakire", "new"].contains($0.queenStatus ?? "") }
         case "yasli": k = k.filter(\.yasliAna)
@@ -144,6 +147,7 @@ struct KovanlarEkrani: View {
             ScrollView(.horizontal) {
                 HStack(spacing: 7) {
                     cip("tumu", "Tümü")
+                    if hepsi.contains(where: \.starred) { cip("yildiz", "★ Öne çıkan") }
                     cip("anasiz", "Anasız", nokta: Renk.kotu)
                     cip("bakire", "Bakire")
                     cip("yasli", "Yaşlı ana")
@@ -201,72 +205,87 @@ struct KovanlarEkrani: View {
     }
 }
 
-/// Kovan kartı (yenilogoo/kovandetay): büyük görsel, tip + sağlık rozeti, 2×2 bilgi (ana, yavru, güç, son kontrol).
+/// Kovan kartı: arka plan görseli, büyük kovan resmi, başlık + yıldız, tip · ırk · sağlık rozetleri tek satırda, dikey ayraçlı 2×2 bilgi.
 struct KovanSatiri: View {
+    @Environment(VeriDeposu.self) private var depo
     let kovan: Kovan
     var sonMuayene: Muayene? = nil
 
     var body: some View {
-        HStack(spacing: 10) {
+        let sekil = RoundedRectangle(cornerRadius: Olcu.kartYaricap, style: .continuous)
+        HStack(spacing: 6) {
             Image(kovan.gorselAdi).resizable().scaledToFit()
-                .frame(width: 92, height: 104)
+                .frame(width: 96, height: 108)
                 .grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.6 : 1)
-                .background(alignment: .bottom) {
-                    Ellipse().fill(Color(red: 0.55, green: 0.7, blue: 0.35).opacity(kovan.arisiz ? 0 : 0.35))
-                        .frame(width: 90, height: 18).blur(radius: 5)
-                }
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Kovan \(kovan.num)").font(Yazi.logo(25)).foregroundStyle(Renk.orman).lineLimit(1)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(alignment: .center) {
+                    Text("Kovan \(kovan.num)").font(Yazi.nunito(21, .bold)).foregroundStyle(kovan.arisiz ? Color(white: 0.3) : Renk.orman).lineLimit(1)
                     Spacer(minLength: 0)
-                    Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Renk.metin3)
-                }
-                HStack(spacing: 6) {
-                    if let t = kovan.type, !t.isEmpty {
-                        Rozet(metin: kovan.katSayisi > 1 ? "\(t) · \(kovan.katSayisi) kat" : t)
+                    Button { depo.yildizDegistir(kovan.id) } label: {
+                        Image(systemName: kovan.starred ? "star.fill" : "star")
+                            .font(.system(size: 19, weight: .semibold))
+                            .foregroundStyle(kovan.starred ? Color(red: 0.9, green: 0.62, blue: 0.05) : Renk.metin3)
+                            .frame(width: 34, height: 34)
+                            .contentShape(Rectangle())
                     }
-                    saglikRozeti
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(kovan.starred ? "Yıldızı kaldır" : "Yıldızla")
                 }
-                Divider().overlay(Renk.krem2)
-                Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 5) {
-                    GridRow {
-                        bilgi("crown", "Ana arı", anaBilgisi, nokta: kovan.anaNoktasiGoster)
-                        bilgi("circle.hexagongrid", "Yavru", yavru)
+                rozetler
+                Rectangle().fill(kartAltin.opacity(0.25)).frame(height: 1)
+                HStack(alignment: .top, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        bilgi(AnyView(Image("IkonAnaAri").resizable().scaledToFit().frame(width: 17, height: 17)), "Ana arı", anaBilgisi, nokta: kovan.anaNoktasiGoster)
+                        bilgi(AnyView(simge("hexagon")), "Koloni gücü", guc)
                     }
-                    GridRow {
-                        bilgi("bolt.heart", "Koloni gücü", guc)
-                        bilgi("calendar", "Son kontrol", sonMuayene?.date.map { kisaTarih($0) } ?? "—")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Rectangle().fill(kartAltin.opacity(0.25)).frame(width: 1).padding(.horizontal, 7)
+                    VStack(alignment: .leading, spacing: 6) {
+                        bilgi(AnyView(simge("oval.portrait")), "Yavru", yavru)
+                        bilgi(AnyView(simge("calendar")), "Son kontrol", sonMuayene?.date.map { kisaTarih($0) } ?? "—")
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.vertical, 10).padding(.leading, 6).padding(.trailing, 12)
+        .padding(.top, kovan.starred ? 16 : 8).padding(.bottom, 8).padding(.leading, 4).padding(.trailing, 12)
+        .background {
+            Image("KartKovan").resizable().scaledToFill()
+                .grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.45 : 1)
+        }
+        .clipShape(sekil)
+        .overlay(alignment: .topLeading) { if kovan.starred { OneCikanSeridi() } }
         .kovanKartiStili(kovan, yaricap: Olcu.kartYaricap)
         .accessibilityElement(children: .combine)
     }
 
-    @ViewBuilder
-    private var saglikRozeti: some View {
-        switch kovan.saglikDurumu {
-        case .saglikli: Rozet(metin: "Sağlıklı", tur: .iyi)
-        case .dikkat: Rozet(metin: kovan.yasliAna ? "Yaşlı ana" : kovan.anaDurumMetni, tur: .uyari)
-        case .mudahale: Rozet(metin: "Ana yok", tur: .kotu)
-        case .arisiz: Rozet(metin: "Arısız")
+    private var rozetler: some View {
+        let irk = (kovan.race ?? "").isEmpty || kovan.arisiz ? nil : kovan.race
+        return HStack(spacing: 5) {
+            if let t = kovan.type, !t.isEmpty {
+                Rozet(metin: t, simge: "square.stack.3d.up", arkaRenk: Color.white.opacity(0.7))
+            }
+            if let irk { Rozet(metin: irk, simge: "ladybug", arkaRenk: Renk.bal.opacity(0.22)) }
+            switch kovan.saglikDurumu {
+            case .saglikli: Rozet(metin: "Sağlıklı", tur: .iyi, simge: "checkmark.circle.fill")
+            case .dikkat: Rozet(metin: kovan.dikkatNedeni, tur: .uyari, simge: "exclamationmark.triangle.fill")
+            case .mudahale: Rozet(metin: "Ana yok", tur: .kotu, simge: "xmark.octagon.fill")
+            case .arisiz: Rozet(metin: "Arısız")
+            }
         }
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
     }
 
     private var anaBilgisi: String {
-        guard kovan.anaNoktasiGoster else { return kovan.anaDurumMetni }
-        var p: [String] = []
-        if let y = kovan.anaYili {
-            let yas = Calendar.current.component(.year, from: Date()) - y
-            p.append(yas <= 0 ? "\(y) · bu yıl" : "\(y) · \(yas) yaş")
-        }
-        if let r = kovan.race, !r.isEmpty { p.append(r) }
-        return p.isEmpty ? kovan.anaDurumMetni : p.joined(separator: " · ")
+        guard kovan.anaNoktasiGoster, let y = kovan.anaYili else { return kovan.anaDurumMetni }
+        let yas = Calendar.current.component(.year, from: Date()) - y
+        return yas <= 0 ? "\(y) · bu yıl" : "\(y) · \(yas) yaş"
     }
 
     private var guc: String {
+        if kovan.arisiz { return "—" }
         if let s = sonMuayene?.strength, let g = Int(s) { return g >= 4 ? "Güçlü" : g == 3 ? "Orta" : "Zayıf" }
         return kovan.gucMetni ?? (kovan.frames.map { "\(Int($0)) çerçeve" } ?? "—")
     }
@@ -276,18 +295,37 @@ struct KovanSatiri: View {
         return ["duzenli": "Düzenli", "seyrek": "Seyrek", "yok": "Yok"][b] ?? b
     }
 
-    private func bilgi(_ simge: String, _ baslik: String, _ deger: String, nokta: Bool = false) -> some View {
+    private func simge(_ ad: String) -> some View {
+        Image(systemName: ad).font(.system(size: 14)).foregroundStyle(kartAltin)
+    }
+
+    private func bilgi(_ ikon: AnyView, _ baslik: String, _ deger: String, nokta: Bool = false) -> some View {
         HStack(alignment: .top, spacing: 5) {
-            Image(systemName: simge).font(.system(size: 14)).foregroundStyle(Color(red: 0.8, green: 0.55, blue: 0.05)).frame(width: 18)
+            ikon.frame(width: 18, height: 18).padding(.top, 2)
             VStack(alignment: .leading, spacing: 0) {
-                Text(baslik).font(Yazi.nunito(11, .regular)).foregroundStyle(Renk.metin2)
+                Text(baslik).font(Yazi.nunito(11)).foregroundStyle(Renk.metin2)
                 HStack(spacing: 4) {
                     if nokta { AnaNoktasi(renk: kovan.queenColor, boyut: 8) }
-                    Text(deger).font(Yazi.nunito(14, .semibold)).foregroundStyle(Renk.metin).lineLimit(1).minimumScaleFactor(0.75)
+                    Text(deger).font(Yazi.nunito(13, .semibold)).lineLimit(1).minimumScaleFactor(0.75)
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// "Öne Çıkan" şeridi (kartın sol üst köşesi).
+struct OneCikanSeridi: View {
+    var yaricap: CGFloat = Olcu.kartYaricap
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "rosette").font(.system(size: 11, weight: .bold)).foregroundStyle(Renk.acikBal)
+            Text("Öne Çıkan").font(Yazi.nunito(11, .bold)).foregroundStyle(.white)
+        }
+        .padding(.leading, 12).padding(.trailing, 10).padding(.vertical, 4)
+        .background(
+            LinearGradient(colors: [Color(red: 0.55, green: 0.36, blue: 0.05), Color(red: 0.75, green: 0.52, blue: 0.1)], startPoint: .leading, endPoint: .trailing),
+            in: UnevenRoundedRectangle(topLeadingRadius: yaricap, bottomTrailingRadius: 14, style: .continuous)
+        )
     }
 }
 
@@ -298,6 +336,7 @@ struct KovanIzgaraHucresi: View {
             Image(kovan.gorselAdi).resizable().scaledToFit().frame(height: 70)
                 .grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.6 : 1)
             HStack(spacing: 4) {
+                if kovan.starred { Image(systemName: "star.fill").font(.system(size: 10)).foregroundStyle(Color(red: 0.9, green: 0.62, blue: 0.05)) }
                 if kovan.anaNoktasiGoster { AnaNoktasi(renk: kovan.queenColor, boyut: 9) }
                 Text(kovan.num).font(Yazi.nunito(16, .bold))
             }
@@ -305,20 +344,36 @@ struct KovanIzgaraHucresi: View {
         }
         .padding(8)
         .frame(maxWidth: .infinity)
+        .background(Renk.krem, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .kovanKartiStili(kovan, yaricap: 18)
     }
 }
 
+extension Kovan {
+    /// Kart ışıması: yıldızlı altın; ana var ama dikkat (yaşlı/zayıf) turuncu; diğerleri ana durumuna göre.
+    var kartIsigi: Color? {
+        if arisiz { return nil }
+        if starred { return Renk.bal }
+        if queenStatus == "yes" && saglikDurumu == .dikkat { return Color(red: 1, green: 0.66, blue: 0.1) }
+        return isimaRengi
+    }
+}
+
 extension View {
-    /// Kovan kartı: krem zemin + ana arı durumuna göre renkli ışıma; arısız kovan gri ve ışımasız.
+    /// Kovan kartı: geçişli (gradyan) kenar + ana durumuna göre geniş renkli ışıma; arısız gri ve ışımasız.
     func kovanKartiStili(_ kovan: Kovan, yaricap: CGFloat) -> some View {
         let sekil = RoundedRectangle(cornerRadius: yaricap, style: .continuous)
-        let isik = kovan.isimaRengi
+        let isik = kovan.kartIsigi
+        let kalin = kovan.starred || kovan.sorunlu
         return self
             .background(kovan.arisiz ? Color(white: 0.78) : Renk.krem, in: sekil)
-            .overlay(sekil.strokeBorder((isik ?? .clear).opacity(kovan.sorunlu ? 0.95 : 0.7), lineWidth: kovan.sorunlu ? 2 : 1.5))
-            .shadow(color: (isik ?? .black).opacity(isik == nil ? 0.2 : 0.55), radius: 10)
-            .shadow(color: .black.opacity(0.2), radius: 6, y: 5)
+            .overlay {
+                if let isik {
+                    sekil.strokeBorder(LinearGradient(colors: [isik, isik.opacity(0.12), isik.opacity(0.35), isik], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: kalin ? 2.5 : 2)
+                }
+            }
+            .shadow(color: (isik ?? .black).opacity(isik == nil ? 0.2 : 0.7), radius: isik == nil ? 6 : (kalin ? 16 : 13))
+            .shadow(color: .black.opacity(0.15), radius: 5, y: 4)
             .foregroundStyle(kovan.arisiz ? Color(white: 0.3) : Renk.metin)
     }
 }

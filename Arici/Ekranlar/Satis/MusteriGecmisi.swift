@@ -17,32 +17,46 @@ struct MusteriGecmisiSayfasi: View {
         let alacak = bekleyenToplam(satislar: satislar)
         let telefon = satislar.compactMap(\.phone).first { !$0.isEmpty }
         let sezonlar = depo.veri.sezonlar
+        let basHarf = String(musteri.split(separator: " ").prefix(2).compactMap(\.first)).uppercased(with: Locale(identifier: "tr"))
+        let tarihler = satislar.compactMap { $0.date.map { String($0.prefix(10)) } }.filter { !$0.isEmpty }.sorted()
         NavigationStack {
             List {
                 Section {
-                    HStack(spacing: 0) {
-                        kutu("\(satislar.count)", "Satış")
-                        kutu(tl(toplam), "Toplam")
-                        kutu(tl(alacak), "Alacak", renk: alacak > 0 ? Renk.kotu : Renk.metin)
-                    }
-                    if let telefon {
-                        HStack {
-                            Button { if let u = URL(string: "tel:\(telefon.filter { $0.isNumber || $0 == "+" })") { ac(u) } } label: {
-                                Label(telefon, systemImage: "phone.fill")
+                    SayfaKahramaniMusteri(ad: musteri, basHarf: basHarf, aralik: tarihAraligi(tarihler)) {
+                        HStack(spacing: 8) {
+                            OzetKutucuk(simge: "cart", etiket: "Satış", deger: "\(satislar.count)", renk: Renk.orman2)
+                            OzetKutucuk(simge: "banknote", etiket: "Toplam", deger: tl(toplam), renk: dahaAltin)
+                            OzetKutucuk(simge: "creditcard", etiket: "Alacak", deger: tl(alacak), renk: alacak > 0 ? Renk.kotu : Renk.iyi)
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
+                        if let telefon {
+                            HStack(spacing: 8) {
+                                EylemDugmesi(simge: "phone.fill", metin: "Ara") {
+                                    if let u = URL(string: "tel:\(telefon.filter { $0.isNumber || $0 == "+" })") { ac(u) }
+                                }
+                                EylemDugmesi(simge: "message.fill", metin: "WhatsApp", renk: Color(red: 0.15, green: 0.55, blue: 0.3)) {
+                                    let metin = alacak > 0 ? "Merhaba \(musteri), \(tl(alacak)) tutarındaki bal ödemeniz hatırlatma olarak iletilir. Teşekkürler 🐝" : "Merhaba \(musteri) 🐝"
+                                    let tel = telefon.filter(\.isNumber)
+                                    let t = tel.hasPrefix("0") ? "90" + tel.dropFirst() : tel
+                                    if let u = URL(string: "https://wa.me/\(t)?text=" + (metin.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")) { ac(u) }
+                                }
                             }
-                            Spacer()
+                            Label(telefon, systemImage: "phone").font(Yazi.minik).foregroundStyle(Renk.metin2)
                         }
                     }
                 }
+                .listeBasligi()
                 ForEach(gruplar(satislar, sezonlar: sezonlar), id: \.ad) { g in
-                    Section(g.ad) {
+                    Section {
                         ForEach(g.satislar, id: \.id) { s in
                             Button { duzenlenen = s.id } label: { satir(s) }.buttonStyle(.plain)
                         }
+                    } header: {
+                        Label(g.ad, systemImage: "calendar").font(Yazi.etiket)
                     }
                 }
             }
-            .navigationTitle(musteri)
+            .navigationTitle("Müşteri")
             .navigationBarTitleDisplayMode(.inline)
             .formArkaplani()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } } }
@@ -68,7 +82,7 @@ struct MusteriGecmisiSayfasi: View {
 
     private func satir(_ s: Satis) -> some View {
         HStack(spacing: 10) {
-            UrunGorseli(urun: satisStokUrunu(s).flatMap { p in depo.urunler.first { $0.v == p } }, boyut: 34, yaricap: 9)
+            UrunGorseli(urun: satisStokUrunu(s).flatMap { p in depo.urunler.first { $0.v == p } }, boyut: 38, yaricap: 10)
             VStack(alignment: .leading, spacing: 2) {
                 Text(s.etiket(urunler: depo.urunler)).font(Yazi.govdeOrta)
                 Text([s.date.map { kisaTarih($0) }, s.orderStatus == "preorder" ? "ön sipariş" : nil, s.note].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
@@ -76,13 +90,13 @@ struct MusteriGecmisiSayfasi: View {
             }
             Spacer(minLength: 4)
             VStack(alignment: .trailing, spacing: 2) {
-                Text(tl(s.total ?? 0)).font(Yazi.kucukOrta)
+                Text(tl(s.total ?? 0)).font(Yazi.nunito(15, .bold))
                 switch s.payment {
-                case "pending": Text("Bekliyor").font(Yazi.minik).foregroundStyle(Renk.kotu)
-                case "partial": Text("\(tl(kalan(s.ham))) kaldı").font(Yazi.minik).foregroundStyle(Renk.uyari)
-                case "hediye": Text("Hediye").font(Yazi.minik).foregroundStyle(Renk.bilgi)
-                case "zekat": Text("Zekat").font(Yazi.minik).foregroundStyle(Renk.mor)
-                default: Text("Ödendi").font(Yazi.minik).foregroundStyle(Renk.iyi)
+                case "pending": Rozet(metin: "Bekliyor", tur: .kotu)
+                case "partial": Rozet(metin: "\(tl(kalan(s.ham))) kaldı", tur: .uyari)
+                case "hediye": Rozet(metin: "Hediye", tur: .bilgi)
+                case "zekat": Rozet(metin: "Zekat", tur: .mor)
+                default: Rozet(metin: "Ödendi", tur: .iyi)
                 }
             }
         }
@@ -95,5 +109,36 @@ struct MusteriGecmisiSayfasi: View {
             Text(ad).font(Yazi.etiket).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+private func tarihAraligi(_ t: [String]) -> String {
+    guard let ilk = t.first, let son = t.last else { return "Satış kaydı yok" }
+    func uzun(_ x: String) -> String { "\(kisaTarih(x)) \(x.prefix(4))" }
+    return ilk == son ? uzun(ilk) : "\(uzun(ilk)) – \(uzun(son))"
+}
+
+/// Müşteri başlık kartı: yapraklı zemin, ad + tarih aralığı, sağda baş harfli renkli daire.
+private struct SayfaKahramaniMusteri<Icerik: View>: View {
+    let ad: String
+    let basHarf: String
+    let aralik: String
+    @ViewBuilder var icerik: Icerik
+    var body: some View {
+        DogaKart {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(ad).font(Yazi.nunito(21, .bold)).foregroundStyle(Renk.orman).lineLimit(2)
+                    Text(aralik).font(Yazi.minik).foregroundStyle(Renk.metin2)
+                }
+                .padding(.leading, 40)
+                Spacer(minLength: 0)
+                Text(basHarf).font(Yazi.nunito(21, .bold)).foregroundStyle(.white)
+                    .frame(width: 58, height: 58)
+                    .background(MusteriKartiGorunumu.renkler[ad.unicodeScalars.reduce(0) { $0 + Int($1.value) } % MusteriKartiGorunumu.renkler.count], in: Circle())
+                    .overlay(Circle().strokeBorder(Renk.bal, lineWidth: 2))
+            }
+            icerik
+        }
     }
 }
