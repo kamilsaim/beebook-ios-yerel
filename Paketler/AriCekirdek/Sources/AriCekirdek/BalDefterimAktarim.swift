@@ -82,6 +82,7 @@ public func balDefterimAktarimi(_ j: JSONDeger, veri v: BBVeri, ayarlar a: Ayarl
 
     // --- Ürünler
     struct BdUrun { let id, ad, ikon, birim: String; let zekat, pasif: Bool? }
+    let listeVar = !(j["urunler"]?.diziDegeri ?? []).isEmpty
     var bdUrunler: [BdUrun] = (j["urunler"]?.diziDegeri ?? []).compactMap { e in
         guard let id = e["id"]?.metinDegeri else { return nil }
         return BdUrun(id: id, ad: e["ad"]?.metinDegeri ?? id, ikon: e["ikon"]?.metinDegeri ?? "", birim: e["birim"]?.metinDegeri ?? "kg",
@@ -111,6 +112,8 @@ public func balDefterimAktarimi(_ j: JSONDeger, veri v: BBVeri, ayarlar a: Ayarl
         return v2
     }
     for u in bdUrunler { esleme[u.id] = urunuBul(u); birimler[u.id] = u.birim }
+    // Bal Defterim'in ürün listesinde tanımlı olanlar (kaydı olmasa da) taşınır.
+    let tanimli: Set<String> = listeVar ? Set(esleme.values) : []
     func urunId(_ bd: String) -> String {
         if let e = esleme[bd] { return e }
         // Listede olmayan ürün (silinmiş) → adı id olan yeni ürün
@@ -204,6 +207,11 @@ public func balDefterimAktarimi(_ j: JSONDeger, veri v: BBVeri, ayarlar a: Ayarl
         satislar.append(s)
     }
 
-    return BalAktarim(urunEsleme: esleme, yeniUrunler: yeniUrunler, fiyatlar: fiyatlar, yeniSezonlar: yeniSezonlar,
+    // Listede tanımlı olmayan ve kaydı da olmayan ürün eklenmez (ör. yedekte yalnız fiyatı duran "polen"); fiyatı da yazılmaz.
+    let kullanilan = Set(stok.compactMap(\.product) + satislar.compactMap(\.product)).union(tanimli)
+    let tutulanYeni = yeniUrunler.filter { kullanilan.contains($0.v) }
+    let gecerli = Set(mevcutUrunler.map(\.v) + tutulanYeni.map(\.v))
+    return BalAktarim(urunEsleme: esleme.filter { gecerli.contains($0.value) }, yeniUrunler: tutulanYeni,
+                      fiyatlar: fiyatlar.filter { gecerli.contains($0.key) }, yeniSezonlar: yeniSezonlar,
                       stokGirisleri: stok, satislar: satislar, hasatSayisi: stok.count, siparisSayisi: siparisler.count, zekatSayisi: zekatlar.count)
 }

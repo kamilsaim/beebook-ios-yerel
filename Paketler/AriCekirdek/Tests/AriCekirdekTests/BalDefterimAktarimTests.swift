@@ -5,7 +5,7 @@ import XCTest
 
 private let yedekMetni = """
 {"sezonlar":[{"id":"s25","ad":"2025 Sezonu"},{"id":"s26","ad":"2026 Sezonu"}],
- "aktifSezon":"s26","fiyatlar":{"suzme":650,"polen":900},
+ "aktifSezon":"s26","fiyatlar":{"suzme":650,"polen":900,"propolis":1500},
  "urunler":[{"id":"suzme","ad":"Süzme Bal","ikon":"🍯","birim":"kg"},
             {"id":"polen","ad":"Polen","ikon":"🌼","birim":"kg"},
             {"id":"ana-ari","ad":"Ana Arı","ikon":"👑","birim":"adet","zekat":false}],
@@ -50,6 +50,8 @@ final class BalDefterimAktarimTests: XCTestCase {
         XCTAssertEqual(a.stockTypes.first { $0.v == "ana_ari" }?.zakat, false)
         XCTAssertEqual(a.stockPrices["suzme_bal"], 650)
         XCTAssertEqual(a.stockPrices["polen"], 900)
+        // Yalnız fiyatı olan, kaydı olmayan ürün eklenmez
+        XCTAssertNil(a.stockPrices["propolis"])
     }
 
     func test_kayitlarVeStok() throws {
