@@ -1,4 +1,5 @@
 import AriCekirdek
+import StoreKit
 import SwiftUI
 
 /// Başlatma argümanları (simülatör ekran görüntüleri): `-sekme <ad>`, `-ornekVeri`, `-ornekKaydir`.
@@ -15,6 +16,8 @@ enum Baslatma {
 
 struct AnaKabuk: View {
     @Environment(VeriDeposu.self) private var depo
+    @Environment(\.requestReview) private var puanIste
+    private var yasam: UygulamaYasami { .paylasilan }
     @State private var menu: MenuDurumu = {
         let m = MenuDurumu()
         m.secili = Baslatma.ilkSekme
@@ -38,6 +41,24 @@ struct AnaKabuk: View {
         .preferredColorScheme(.dark)
         .onAppear(perform: rozetleriGuncelle)
         .onChange(of: depo.veri) { _, _ in rozetleriGuncelle() }
+        // Ana ekran kısayolu: Satış ekle / Kovan ekle
+        .onChange(of: yasam.kisayol, initial: true) { _, k in
+            switch k {
+            case "satis": menu.git(.satis); menu.yeniSatisIstegi += 1
+            case "kovan": menu.git(.kovanlar); menu.yeniKovanIstegi += 1
+            default: break
+            }
+            if k != nil { yasam.kisayol = nil }
+        }
+        .task {
+            yasam.surumKontrol()
+            await yasam.guncellemeKontrol()
+            try? await Task.sleep(for: .seconds(4))
+            if yasam.puanlamaUygun(kayitSayisi: depo.veri.kovanlar.count + depo.veri.satislar.count + depo.veri.stokKayitlari.count) { puanIste() }
+        }
+        .alert("BeeBook \(yasam.guncellendiSurum ?? "") sürümüne güncellendi", isPresented: Binding(get: { yasam.guncellendiSurum != nil }, set: { if !$0 { yasam.guncellendiSurum = nil } })) {
+            Button("Harika") { yasam.guncellendiSurum = nil }
+        } message: { Text("Yenilenen kovan kartları, raporlar ve sayfalar seni bekliyor. Verilerin olduğu gibi duruyor.") }
     }
 
     private func rozetleriGuncelle() {

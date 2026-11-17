@@ -586,6 +586,10 @@ struct AyarlarEkrani: View {
                 }
             }
             Section {
+                Button { UygulamaYasami.paylasilan.magazayiAc(yorum: true) } label: {
+                    SimgeliSatir(simge: "star", renk: dahaAltin, baslik: "Uygulamayı puanla", alt: "App Store'da yorum yaz") { Image(systemName: "chevron.right").foregroundStyle(Renk.metin3) }
+                }
+                .buttonStyle(.plain)
                 Button { ac(Sabitler.gizlilik) } label: {
                     SimgeliSatir(simge: "hand.raised", renk: Renk.orman2, baslik: "Gizlilik politikası") { Image(systemName: "chevron.right").foregroundStyle(Renk.metin3) }
                 }

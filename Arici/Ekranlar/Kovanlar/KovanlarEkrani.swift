@@ -92,6 +92,7 @@ struct KovanlarEkrani: View {
             }
         }
         .onChange(of: menu.araziIstegi) { _, _ in yol = NavigationPath(); gorunum = .arazi }
+        .onChange(of: menu.yeniKovanIstegi) { _, _ in yeniForm = true }
     }
 
     /// Kovan id → en son muayene (tarihe göre).
@@ -163,7 +164,7 @@ struct KovanlarEkrani: View {
                 BosDurum(simge: "archivebox", baslik: hepsi.isEmpty ? "Henüz kovan yok" : "Eşleşen kovan yok",
                          alt: hepsi.isEmpty ? "Sağ üstteki + ile kovan ekle." : nil)
             } else if gorunum == .izgara {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
                     ForEach(k, id: \.id) { kv in
                         NavigationLink(value: kv.id) { KovanIzgaraHucresi(kovan: kv) }.buttonStyle(.plain)
                     }
@@ -329,22 +330,57 @@ struct OneCikanSeridi: View {
     }
 }
 
+/// Izgara hücresi: arka plan görseli, kovan resmi, "Kovan N", sağlık rozeti, ırk; sağ üstte yıldız.
 struct KovanIzgaraHucresi: View {
+    @Environment(VeriDeposu.self) private var depo
     let kovan: Kovan
     var body: some View {
-        VStack(spacing: 4) {
-            Image(kovan.gorselAdi).resizable().scaledToFit().frame(height: 70)
+        let sekil = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        let (metin, renk, simge): (String, Color, String) = {
+            switch kovan.saglikDurumu {
+            case .saglikli: return ("Sağlıklı", Renk.iyi, "checkmark.circle.fill")
+            case .dikkat: return (kovan.dikkatNedeni, Renk.uyari, "exclamationmark.triangle.fill")
+            case .mudahale: return ("Ana yok", Renk.kotu, "xmark.octagon.fill")
+            case .arisiz: return ("Arısız", Renk.metin3, "archivebox")
+            }
+        }()
+        VStack(spacing: 3) {
+            Image(kovan.gorselAdi).resizable().scaledToFit().frame(width: 76, height: 74)
                 .grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.6 : 1)
             HStack(spacing: 4) {
-                if kovan.starred { Image(systemName: "star.fill").font(.system(size: 10)).foregroundStyle(Color(red: 0.9, green: 0.62, blue: 0.05)) }
                 if kovan.anaNoktasiGoster { AnaNoktasi(renk: kovan.queenColor, boyut: 9) }
-                Text(kovan.num).font(Yazi.nunito(16, .bold))
+                Text("Kovan \(kovan.num)").font(Yazi.nunito(15, .bold)).foregroundStyle(kovan.arisiz ? Color(white: 0.3) : Renk.orman).lineLimit(1).minimumScaleFactor(0.8)
             }
-            Text(kovan.anaDurumMetni).font(Yazi.minik).foregroundStyle(kovan.sorunlu ? Renk.kotu : Renk.metin2)
+            HStack(spacing: 3) {
+                Image(systemName: simge).font(.system(size: 9, weight: .semibold))
+                Text(metin).font(Yazi.nunito(10, .semibold)).lineLimit(1).minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(renk)
+            .padding(.horizontal, 7).padding(.vertical, 3)
+            .background(renk.opacity(0.14), in: Capsule())
+            Text((!(kovan.race ?? "").isEmpty && !kovan.arisiz ? kovan.race : kovan.type) ?? " ").font(Yazi.nunito(10)).foregroundStyle(Renk.metin2).lineLimit(1)
         }
-        .padding(8)
+        .padding(.top, 8).padding(.bottom, 9).padding(.horizontal, 6)
         .frame(maxWidth: .infinity)
-        .background(Renk.krem, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background { Image("KartKovan").resizable().scaledToFill().grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.45 : 1) }
+        .clipShape(sekil)
+        .overlay(alignment: .topTrailing) {
+            Button { depo.yildizDegistir(kovan.id) } label: {
+                Image(systemName: kovan.starred ? "star.fill" : "star").font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(kovan.starred ? Color(red: 0.9, green: 0.62, blue: 0.05) : Renk.metin3.opacity(0.7))
+                    .frame(width: 30, height: 30).contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(kovan.starred ? "Yıldızı kaldır" : "Yıldızla")
+        }
+        .overlay(alignment: .topLeading) {
+            if kovan.starred {
+                Image(systemName: "rosette").font(.system(size: 11, weight: .bold)).foregroundStyle(Renk.acikBal)
+                    .padding(.horizontal, 7).padding(.vertical, 3)
+                    .background(LinearGradient(colors: [Color(red: 0.55, green: 0.36, blue: 0.05), Color(red: 0.75, green: 0.52, blue: 0.1)], startPoint: .leading, endPoint: .trailing),
+                                in: UnevenRoundedRectangle(topLeadingRadius: 18, bottomTrailingRadius: 12, style: .continuous))
+            }
+        }
         .kovanKartiStili(kovan, yaricap: 18)
     }
 }

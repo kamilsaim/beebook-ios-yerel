@@ -14,6 +14,7 @@ struct AnaSayfaEkrani: View {
                 HStack { Marka(); Spacer(); CamDugme(simge: "bell", nokta: !depo.bildirimler.isEmpty) { bildirimler = true }
                     .accessibilityLabel("Bildirimler") }
                 HStack { SezonSecici(); Spacer(minLength: 8); KullaniciRozeti() }.padding(.top, 14)
+                GuncellemeBandi().padding(.top, 12)
                 HavaKarti(hava: hava, hata: havaHata, sehir: depo.ayarlar.city).padding(.top, 12)
                     .onTapGesture { menu.git(.daha) }
             }

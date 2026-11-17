@@ -5,6 +5,7 @@ import SwiftUI
 
 @main
 struct AriciApp: App {
+    @UIApplicationDelegateAdaptor(UygulamaTemsilcisi.self) private var temsilci
     @State private var oturum = OturumYoneticisi()
     @State private var depo = VeriDeposu()
     @Environment(\.scenePhase) private var sahne

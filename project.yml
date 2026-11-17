@@ -75,6 +75,13 @@ targets:
           UIImageRespectsSafeAreaInsets: true
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIUserInterfaceStyle: Dark
+        UIApplicationShortcutItems:
+          - UIApplicationShortcutItemType: com.kamilsaim.beebook.satis
+            UIApplicationShortcutItemTitle: Satış ekle
+            UIApplicationShortcutItemIconSymbolName: cart.badge.plus
+          - UIApplicationShortcutItemType: com.kamilsaim.beebook.kovan
+            UIApplicationShortcutItemTitle: Kovan ekle
+            UIApplicationShortcutItemIconSymbolName: plus.square.on.square
         NSCameraUsageDescription: Kovan plakasındaki barkodu okumak ve ürün fotoğrafı çekmek için kamera kullanılır.
         NSPhotoLibraryUsageDescription: Ürün görseli seçmek için fotoğraflarına erişilir.
         GIDClientID: $(GOOGLE_IOS_ISTEMCI)
