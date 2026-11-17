@@ -487,8 +487,9 @@ struct HavaEkrani: View {
         if h.kod >= 51 { engeller.append(h.durumMetni.lowercased(with: Locale(identifier: "tr"))) }
         let uygun = engeller.isEmpty
         let renk = uygun ? Renk.iyi : Renk.uyari
-        let aciklama = uygun ? "Sıcak, sakin ve kuru. Kovan açmak için iyi bir zaman."
-            : engeller.joined(separator: ", ").prefix(1).uppercased(with: Locale(identifier: "tr")) + engeller.joined(separator: ", ").dropFirst() + ". Kovanı açmayı ertele."
+        let liste = engeller.joined(separator: ", ")
+        let bas: String = String(liste.prefix(1)).uppercased(with: Locale(identifier: "tr"))
+        let aciklama: String = uygun ? "Sıcak, sakin ve kuru. Kovan açmak için iyi bir zaman." : bas + String(liste.dropFirst()) + ". Kovanı açmayı ertele."
         // Bugün içinde uygun saat önerisi: 15°+ , rüzgâr ≤ 20, yağış < %30
         let uygunSaat = (h.saatlikUzun ?? []).first { $0.derece >= 15 && $0.ruzgar <= 20 && $0.yagis < 30 && $0.kod < 51 }
         return DogaKart {
