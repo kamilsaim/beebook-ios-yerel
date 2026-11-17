@@ -21,9 +21,9 @@ struct AnaSayfaEkrani: View {
                 OzetKartlari()
                 HizliErisim()
                 YapilacaklarKarti()
-                YapilanIslerKarti()
                 OzetRaporKarti()
                 AnaAriDikkatKarti()
+                IrkOzeti()
             }
             .padding(.horizontal, Olcu.kenar)
             .padding(.top, 12)

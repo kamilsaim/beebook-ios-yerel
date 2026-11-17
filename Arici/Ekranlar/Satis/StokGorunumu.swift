@@ -21,6 +21,7 @@ struct StokGorunumu: View {
                 kapsul("Rapor", "chart.bar") { rapor = true }
             }
             urunOzeti(urunler)
+            giderOzeti
             sonSatislar(urunler)
             HStack(spacing: 10) {
                 hediyeZekat(baslik: "Hediye", simge: "gift", odeme: "hediye", urunler: urunler)
@@ -28,7 +29,6 @@ struct StokGorunumu: View {
             }
             otomatikBilgi
             hareketler(urunler)
-            giderOzeti
         }
         .sheet(item: $urunForm) { UrunFormu(urunId: $0.id) }
         .sheet(isPresented: $yeniUrun) { UrunFormu(urunId: nil) }
@@ -109,7 +109,7 @@ struct StokGorunumu: View {
     // MARK: Son satışlar
 
     private func sonSatislar(_ urunler: [UrunTanimi]) -> some View {
-        let son = depo.veri.satislar.sorted { ($0.date ?? "") > ($1.date ?? "") }.prefix(3)
+        let son = depo.sezonda(depo.veri.satislar).sorted { ($0.date ?? "") > ($1.date ?? "") }.prefix(3)
         return Kart {
             HStack {
                 Image(systemName: "cart").foregroundStyle(Renk.orman2)
@@ -120,7 +120,7 @@ struct StokGorunumu: View {
                 }
                 .font(Yazi.etiket).foregroundStyle(Renk.orman2)
             }
-            if son.isEmpty { Text("Henüz satış yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
+            if son.isEmpty { Text("Bu sezon satış yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
             ForEach(Array(son), id: \.id) { s in
                 HStack(spacing: 10) {
                     UrunGorseli(urun: satisStokUrunu(s).flatMap { p in urunler.first { $0.v == p } }, boyut: 40, yaricap: 10)
