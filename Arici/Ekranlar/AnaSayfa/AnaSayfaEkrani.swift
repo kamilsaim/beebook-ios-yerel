@@ -191,22 +191,30 @@ struct OzetKartlari: View {
 struct HizliErisim: View {
     @Environment(MenuDurumu.self) private var menu
     var body: some View {
-        HStack(spacing: 8) {
-            simge("SimgeKovan", "Kovan") { menu.git(.kovanlar) }
-            simge("SimgeAnaAri", "Ana Arı") { menu.git(.anaAri) }
-            simge("SimgeSatis", "Satış") { menu.git(.satis); menu.yeniSatisIstegi += 1 }
-            simge("SimgeArazi", "Arazi") { menu.git(.kovanlar); menu.araziIstegi += 1 }
+        // Sağa sola kaydırılır; sayfa kenar boşluğunu taşıp ekran kenarına uzanır (simgeler kenarda kesilmez).
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                simge("SimgeKovan", "Kovan") { menu.git(.kovanlar) }
+                simge("SimgeAnaAri", "Ana Arı") { menu.git(.anaAri) }
+                simge("SimgeSatis", "Satış") { menu.git(.satis); menu.yeniSatisIstegi += 1 }
+                simge("SimgeArazi", "Arazi") { menu.git(.kovanlar); menu.araziIstegi += 1 }
+                ForEach([DahaSayfa.ariSutu, .giderler, .envanter, .raporlar, .hava, .sezonlar, .yedek, .ayarlar], id: \.self) { s in
+                    simge(s.gorsel, s.ad) { menu.dahaIstegi = s; menu.git(.daha) }
+                }
+            }
+            .padding(.horizontal, Olcu.kenar)
+            .padding(.vertical, 4)
         }
-        .padding(.vertical, 4)
+        .padding(.horizontal, -Olcu.kenar)
     }
 
     private func simge(_ gorsel: String, _ ad: String, _ eylem: @escaping () -> Void) -> some View {
         Button(action: eylem) {
             VStack(spacing: 6) {
                 SimgeKutusu(ad: gorsel, boyut: 74)
-                Text(ad).font(Yazi.etiket).foregroundStyle(Renk.krem)
+                Text(ad).font(Yazi.etiket).foregroundStyle(Renk.krem).lineLimit(1)
             }
-            .frame(maxWidth: .infinity)
+            .frame(width: 78)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(ad)

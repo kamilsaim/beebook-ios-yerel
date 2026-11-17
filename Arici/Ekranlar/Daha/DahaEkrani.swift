@@ -95,6 +95,12 @@ struct DahaEkrani: View {
                 .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 90) }
             }
         }
+        // Ana sayfa kısayolu: istenen sayfayı aç (sekme ilk kez oluşturuluyorsa da çalışır).
+        .onChange(of: menu.dahaIstegi, initial: true) { _, s in
+            guard let s else { return }
+            var y = NavigationPath(); y.append(s); yol = y
+            menu.dahaIstegi = nil
+        }
     }
 }
 

@@ -34,6 +34,8 @@ final class MenuDurumu {
     var araziIstegi = 0
     /// Ana sayfadaki "Satış" kısayolu: yeni satış formunu aç.
     var yeniSatisIstegi = 0
+    /// Ana sayfadaki kısayollar: Daha sekmesinde bu sayfayı aç.
+    var dahaIstegi: DahaSayfa?
 
     func git(_ s: Sekme) {
         ince = false
