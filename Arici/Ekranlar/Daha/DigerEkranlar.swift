@@ -370,30 +370,222 @@ struct SezonFormu: View {
 
 // MARK: - Hava
 
+/// Geniş hava sayfası: şimdi kartı (gökyüzü renginde), arıcılık yorumu, 24 saat şeridi, 7 gün listesi, şehir.
 struct HavaEkrani: View {
     @Environment(VeriDeposu.self) private var depo
     @State private var hava: HavaDurumu?
+    @State private var hata = false
     @State private var sehir = ""
+
     var body: some View {
-        List {
-            Section("Şehir") {
-                TextField("Şehir", text: $sehir).onSubmit { depo.ayarDegistir { $0.city = sehir } }
-            }
-            if let hava {
-                Section("Şimdi") {
-                    HStack { Image(systemName: hava.simge).symbolRenderingMode(.multicolor).font(.largeTitle); Text("\(hava.derece)°").font(.largeTitle); Text(hava.durumMetni) }
-                    Text("Hissedilen \(hava.hissedilen)° · Nem %\(hava.nem) · Rüzgâr \(hava.ruzgar) km/s").font(.caption)
+        ScrollView {
+            VStack(spacing: 12) {
+                if let h = hava {
+                    simdiKarti(h)
+                    aricilikKarti(h)
+                    if let uzun = h.saatlikUzun, !uzun.isEmpty { saatlikKart(uzun) }
+                    gunlukKart(h)
+                } else {
+                    VStack(spacing: 10) {
+                        if hata {
+                            Image(systemName: "icloud.slash").font(.system(size: 30)).foregroundStyle(Renk.metin3)
+                            Text("Hava durumu alınamadı. İnternet bağlantını ve şehri kontrol et.").font(Yazi.govde).foregroundStyle(Renk.metin2).multilineTextAlignment(.center)
+                        } else {
+                            ProgressView().tint(Renk.orman2)
+                            Text("Hava durumu yükleniyor…").font(Yazi.govde).foregroundStyle(Renk.metin3)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 180)
+                    .dogaZemini()
                 }
-                Section("7 gün") {
-                    ForEach(hava.gunluk) { g in
-                        HStack { Text(kisaTarih(g.tarih)).frame(width: 60, alignment: .leading); Image(systemName: HavaDurumu.simge(g.kod)).symbolRenderingMode(.multicolor); Spacer(); Text("\(g.enDusuk)° / \(g.enYuksek)°") }
+                sehirKarti
+            }
+            .padding(.horizontal, Olcu.kenar)
+            .padding(.top, 6)
+        }
+        .scrollIndicators(.hidden)
+        .task(id: depo.ayarlar.city) {
+            sehir = depo.ayarlar.city ?? "Muğla"
+            hata = false
+            do { hava = try await HavaServisi.paylasilan.getir(sehir: sehir.isEmpty ? "Muğla" : sehir) } catch { hata = true }
+        }
+    }
+
+    // MARK: Parçalar
+
+    /// Hava koduna göre gökyüzü degradesi (açık mavi / bulutlu gri / yağmurlu koyu / gece lacivert değil — gündüz paleti).
+    private func gokyuzu(_ kod: Int) -> [Color] {
+        switch kod {
+        case 0, 1: return [Color(red: 0.24, green: 0.56, blue: 0.86), Color(red: 0.55, green: 0.78, blue: 0.95)]
+        case 2, 3, 45, 48: return [Color(red: 0.36, green: 0.45, blue: 0.55), Color(red: 0.6, green: 0.68, blue: 0.75)]
+        case 95...99: return [Color(red: 0.2, green: 0.2, blue: 0.3), Color(red: 0.4, green: 0.4, blue: 0.5)]
+        default: return [Color(red: 0.26, green: 0.35, blue: 0.46), Color(red: 0.45, green: 0.55, blue: 0.65)]
+        }
+    }
+
+    private func simdiKarti(_ h: HavaDurumu) -> some View {
+        let bugun = h.gunlukEk?.first
+        let gun = h.gunluk.first
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                Image(systemName: "mappin.and.ellipse").font(.system(size: 13, weight: .semibold))
+                Text(h.sehir + (h.rakim.map { " · \($0) m" } ?? "")).font(Yazi.kucukOrta)
+                Spacer()
+                Text("Şimdi").font(Yazi.minik).padding(.horizontal, 8).padding(.vertical, 3).background(.white.opacity(0.2), in: Capsule())
+            }
+            .foregroundStyle(.white.opacity(0.92))
+            HStack(alignment: .center, spacing: 14) {
+                Image(systemName: h.simge).symbolRenderingMode(.multicolor).font(.system(size: 58))
+                    .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(h.derece)°").font(Yazi.nunito(56, .bold)).foregroundStyle(.white)
+                    Text(h.durumMetni).font(Yazi.govdeOrta).foregroundStyle(.white)
+                    if let gun { Text("En düşük \(gun.enDusuk)° · En yüksek \(gun.enYuksek)°").font(Yazi.etiket).foregroundStyle(.white.opacity(0.85)) }
+                }
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 8) {
+                kutucuk("thermometer.medium", "Hissedilen", "\(h.hissedilen)°")
+                kutucuk("humidity", "Nem", "%\(h.nem)")
+                kutucuk("wind", "Rüzgâr", "\(h.ruzgar) km/s")
+                kutucuk("drop", "Yağış", "%\(bugun?.yagis ?? 0)")
+            }
+            if let d = bugun?.dogus, let b = bugun?.batis {
+                HStack(spacing: 14) {
+                    Label(d, systemImage: "sunrise.fill")
+                    Label(b, systemImage: "sunset.fill")
+                    Spacer()
+                }
+                .font(Yazi.etiket).foregroundStyle(.white.opacity(0.9)).symbolRenderingMode(.multicolor)
+            }
+        }
+        .padding(16)
+        .background(LinearGradient(colors: gokyuzu(h.kod), startPoint: .top, endPoint: .bottom), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(alignment: .topTrailing) {
+            Image("KartYaprak").resizable().scaledToFit().frame(width: 90).scaleEffect(x: -1).opacity(0.85).allowsHitTesting(false)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(.white.opacity(0.35)))
+        .shadow(color: .black.opacity(0.25), radius: 10, y: 6)
+    }
+
+    private func kutucuk(_ simge: String, _ ad: String, _ deger: String) -> some View {
+        VStack(spacing: 3) {
+            Image(systemName: simge).font(.system(size: 14, weight: .semibold)).foregroundStyle(Renk.acikBal)
+            Text(deger).font(Yazi.nunito(15, .bold)).foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.7)
+            Text(ad).font(Yazi.minik).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func aricilikKarti(_ h: HavaDurumu) -> some View {
+        var engeller: [String] = []
+        if h.derece < 15 { engeller.append("hava serin (\(h.derece)°)") }
+        if h.ruzgar > 20 { engeller.append("rüzgâr sert (\(h.ruzgar) km/s)") }
+        if h.kod >= 51 { engeller.append(h.durumMetni.lowercased(with: Locale(identifier: "tr"))) }
+        let uygun = engeller.isEmpty
+        let renk = uygun ? Renk.iyi : Renk.uyari
+        let aciklama = uygun ? "Sıcak, sakin ve kuru. Kovan açmak için iyi bir zaman."
+            : engeller.joined(separator: ", ").prefix(1).uppercased(with: Locale(identifier: "tr")) + engeller.joined(separator: ", ").dropFirst() + ". Kovanı açmayı ertele."
+        // Bugün içinde uygun saat önerisi: 15°+ , rüzgâr ≤ 20, yağış < %30
+        let uygunSaat = (h.saatlikUzun ?? []).first { $0.derece >= 15 && $0.ruzgar <= 20 && $0.yagis < 30 && $0.kod < 51 }
+        return DogaKart {
+            BolumBasligi(simge: "ladybug", baslik: "Arıcılık için", kucuk: true)
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: uygun ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
+                    .font(.system(size: 22)).foregroundStyle(renk)
+                    .frame(width: 44, height: 44).background(renk.opacity(0.14), in: Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(uygun ? "Muayeneye uygun" : "Muayene için uygun değil").font(Yazi.govdeOrta).foregroundStyle(renk)
+                    Text(aciklama).font(Yazi.kucuk).foregroundStyle(Renk.metin2)
+                    if !uygun, let s = uygunSaat {
+                        Label("En yakın uygun saat: \(s.tarih == bugunISO() ? "bugün" : kisaTarih(s.tarih)) \(String(format: "%02d:00", s.saat)) (\(s.derece)°)", systemImage: "clock")
+                            .font(Yazi.etiket).foregroundStyle(Renk.orman2).padding(.top, 2)
                     }
                 }
             }
         }
-        .task(id: depo.ayarlar.city) {
-            sehir = depo.ayarlar.city ?? "Muğla"
-            hava = try? await HavaServisi.paylasilan.getir(sehir: sehir)
+    }
+
+    private func saatlikKart(_ uzun: [HavaDurumu.UzunSaat]) -> some View {
+        Kart {
+            BolumBasligi(simge: "clock", baslik: "24 saat", kucuk: true)
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(uzun) { s in
+                        VStack(spacing: 4) {
+                            Text(String(format: "%02d", s.saat)).font(Yazi.etiket).foregroundStyle(Renk.metin2)
+                            Image(systemName: HavaDurumu.simge(s.kod)).symbolRenderingMode(.multicolor).font(.system(size: 20)).frame(height: 24)
+                            Text("\(s.derece)°").font(Yazi.nunito(15, .bold))
+                            Text(s.yagis > 0 ? "%\(s.yagis)" : " ").font(Yazi.minik).foregroundStyle(Renk.bilgi)
+                            Text("\(s.ruzgar) km").font(Yazi.minik).foregroundStyle(Renk.metin3)
+                        }
+                        .frame(width: 48)
+                        .padding(.vertical, 8)
+                        .background(s.saat == 12 ? Renk.bal.opacity(0.12) : Renk.kart, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Renk.krem2))
+                    }
+                }
+            }
+            .scrollIndicators(.hidden)
+        }
+    }
+
+    private func gunlukKart(_ h: HavaDurumu) -> some View {
+        let gunAdlari = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"]
+        let enDusuk = h.gunluk.map(\.enDusuk).min() ?? 0
+        let enYuksek = h.gunluk.map(\.enYuksek).max() ?? 1
+        let aralik = Double(max(1, enYuksek - enDusuk))
+        return Kart {
+            BolumBasligi(simge: "calendar", baslik: "7 gün", kucuk: true)
+            ForEach(Array(h.gunluk.enumerated()), id: \.offset) { i, d in
+                let ek = h.gunlukEk?.first { $0.tarih == d.tarih }
+                let ad = i == 0 ? "Bugün" : isoTarih(d.tarih).map { gunAdlari[Calendar.current.component(.weekday, from: $0) - 1] } ?? kisaTarih(d.tarih)
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(ad).font(Yazi.govdeOrta)
+                        Text(kisaTarih(d.tarih)).font(Yazi.minik).foregroundStyle(Renk.metin3)
+                    }
+                    .frame(width: 58, alignment: .leading)
+                    Image(systemName: HavaDurumu.simge(d.kod)).symbolRenderingMode(.multicolor).font(.system(size: 18)).frame(width: 26)
+                    Text((ek?.yagis ?? 0) > 0 ? "%\(ek!.yagis)" : "").font(Yazi.minik).foregroundStyle(Renk.bilgi).frame(width: 34, alignment: .leading)
+                    Text("\(d.enDusuk)°").font(Yazi.kucuk).foregroundStyle(Renk.metin3).frame(width: 30, alignment: .trailing)
+                    // Sıcaklık aralığı çubuğu (haftanın en düşük–en yüksek aralığına göre)
+                    GeometryReader { g in
+                        let bas = Double(d.enDusuk - enDusuk) / aralik * g.size.width
+                        let gen = max(6, Double(d.enYuksek - d.enDusuk) / aralik * g.size.width)
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Renk.krem2)
+                            Capsule().fill(LinearGradient(colors: [Renk.bilgi.opacity(0.7), Renk.bal], startPoint: .leading, endPoint: .trailing))
+                                .frame(width: gen).offset(x: bas)
+                        }
+                    }
+                    .frame(height: 6)
+                    Text("\(d.enYuksek)°").font(Yazi.kucukOrta).frame(width: 30, alignment: .leading)
+                }
+                .padding(.vertical, 4)
+                if i < h.gunluk.count - 1 { Rectangle().fill(Renk.krem2).frame(height: 1) }
+            }
+        }
+    }
+
+    private var sehirKarti: some View {
+        Kart {
+            BolumBasligi(simge: "mappin.and.ellipse", baslik: "Şehir", kucuk: true)
+            HStack(spacing: 8) {
+                TextField("Şehir", text: $sehir).font(Yazi.govde)
+                    .padding(.horizontal, 12).frame(height: 44)
+                    .background(Renk.kart, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Renk.krem2))
+                    .onSubmit { depo.ayarDegistir { $0.city = sehir.trimmingCharacters(in: .whitespaces) } }
+                Button { depo.ayarDegistir { $0.city = sehir.trimmingCharacters(in: .whitespaces) } } label: {
+                    Text("Kaydet").font(Yazi.govdeOrta).foregroundStyle(.white).padding(.horizontal, 16).frame(height: 44)
+                        .background(Renk.orman2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 }

@@ -15,6 +15,11 @@ struct HavaDurumu: Equatable, Codable {
     let gunluk: [Gun]
     /// Arılığın (ayarlardaki şehir) deniz seviyesinden yüksekliği, metre.
     var rakim: Int? = nil
+    /// Hava sayfası için: önümüzdeki 24 saat (yağış olasılığı, rüzgâr) ve günlük ek bilgiler.
+    struct UzunSaat: Equatable, Codable, Identifiable { var id: String { tarih + "-\(saat)" }; let tarih: String; let saat: Int; let derece: Int; let kod: Int; let yagis: Int; let ruzgar: Int }
+    struct GunEk: Equatable, Codable { let tarih: String; let yagis: Int; let ruzgar: Int; let dogus: String?; let batis: String? }
+    var saatlikUzun: [UzunSaat]? = nil
+    var gunlukEk: [GunEk]? = nil
 
     var durumMetni: String { HavaDurumu.metin(kod) }
     var simge: String { HavaDurumu.simge(kod) }
@@ -61,7 +66,7 @@ actor HavaServisi {
         guard let ilk = (geo["results"] as? [[String: Any]])?.first,
               let enlem = ilk["latitude"] as? Double, let boylam = ilk["longitude"] as? Double
         else { throw URLError(.cannotFindHost) }
-        let url = URL(string: "https://api.open-meteo.com/v1/forecast?latitude=\(enlem)&longitude=\(boylam)&current=temperature_2m,relative_humidity_2m,wind_speed_10m,apparent_temperature,weather_code&hourly=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=7")!
+        let url = URL(string: "https://api.open-meteo.com/v1/forecast?latitude=\(enlem)&longitude=\(boylam)&current=temperature_2m,relative_humidity_2m,wind_speed_10m,apparent_temperature,weather_code&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,wind_speed_10m_max,sunrise,sunset&timezone=auto&forecast_days=7")!
         let w = try await json(url)
         let c = w["current"] as? [String: Any] ?? [:]
         let h = w["hourly"] as? [String: Any] ?? [:]
@@ -77,6 +82,17 @@ actor HavaServisi {
             if (gun == bugun && s > simdiSaat) || gun > bugun { saatlik.append(.init(saat: s, derece: Int(sTemps[i].rounded()), kod: sCodes[i])) }
             if saatlik.count == 6 { break }
         }
+        let sYagis = h["precipitation_probability"] as? [Int] ?? (h["precipitation_probability"] as? [Double])?.map { Int($0) } ?? []
+        let sRuzgar = (h["wind_speed_10m"] as? [Double]) ?? []
+        var uzun: [HavaDurumu.UzunSaat] = []
+        for (i, t) in sTimes.enumerated() where i < sTemps.count && i < sCodes.count {
+            let gun = String(t.prefix(10)), s = Int(t.dropFirst(11).prefix(2)) ?? 0
+            if (gun == bugun && s > simdiSaat) || gun > bugun {
+                uzun.append(.init(tarih: gun, saat: s, derece: Int(sTemps[i].rounded()), kod: sCodes[i],
+                                  yagis: i < sYagis.count ? sYagis[i] : 0, ruzgar: i < sRuzgar.count ? Int(sRuzgar[i].rounded()) : 0))
+            }
+            if uzun.count == 24 { break }
+        }
         let gTimes = d["time"] as? [String] ?? []
         let gMax = d["temperature_2m_max"] as? [Double] ?? []
         let gMin = d["temperature_2m_min"] as? [Double] ?? []
@@ -85,7 +101,15 @@ actor HavaServisi {
             guard i < gMax.count, i < gMin.count, i < gKod.count else { return nil }
             return .init(tarih: gTimes[i], enYuksek: Int(gMax[i].rounded()), enDusuk: Int(gMin[i].rounded()), kod: gKod[i])
         }
-        let hava = HavaDurumu(
+        let gYagis = d["precipitation_probability_max"] as? [Int] ?? (d["precipitation_probability_max"] as? [Double])?.map { Int($0) } ?? []
+        let gRuzgar = d["wind_speed_10m_max"] as? [Double] ?? []
+        let gDogus = d["sunrise"] as? [String] ?? []
+        let gBatis = d["sunset"] as? [String] ?? []
+        let ek = gTimes.indices.map { i in
+            HavaDurumu.GunEk(tarih: gTimes[i], yagis: i < gYagis.count ? gYagis[i] : 0, ruzgar: i < gRuzgar.count ? Int(gRuzgar[i].rounded()) : 0,
+                             dogus: i < gDogus.count ? String(gDogus[i].suffix(5)) : nil, batis: i < gBatis.count ? String(gBatis[i].suffix(5)) : nil)
+        }
+        var hava = HavaDurumu(
             sehir: ilk["name"] as? String ?? sehir,
             derece: Int(((c["temperature_2m"] as? Double) ?? 0).rounded()),
             hissedilen: Int(((c["apparent_temperature"] as? Double) ?? 0).rounded()),
@@ -95,6 +119,8 @@ actor HavaServisi {
             ruzgar: Int(((c["wind_speed_10m"] as? Double) ?? 0).rounded()),
             saatlik: saatlik, gunluk: gunluk,
             rakim: ((w["elevation"] as? Double) ?? (ilk["elevation"] as? Double)).map { Int($0.rounded()) })
+        hava.saatlikUzun = uzun
+        hava.gunlukEk = ek
         onbellek = (sehir, Date(), hava)
         return hava
     }
