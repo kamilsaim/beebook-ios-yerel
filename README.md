@@ -20,18 +20,25 @@ gh workflow run ios-testflight.yml -R kamilsaim/beebook-ios-yerel -f surum=3.0
 Derleme no = çalıştırma×10 + deneme (yeni App Store kaydı).
 
 ## Bekleyen işler
-### Bal Defterim yedeğini içe aktarma (Kamil test ettikten sonra)
-Ayarlar › Yedek'e "Bal Defterim yedeğini içe aktar" düğmesi. Bal Defterim yedeği (`bal-defterim-yedek-*.json`,
-`V = {sezonlar, aktifSezon, fiyatlar, urunler, hasatlar, siparisler, zekatlar}`) BeeBook verisine dönüştürülür:
+### Bal Defterim yedeğini içe aktarma (yapıldı, 17 Kas 2026 — Android'de emülatörde denendi)
+Ayarlar › Yedek › "Bal Defterim yedeğini içe aktar". Kod: `Paketler/AriCekirdek/.../BalDefterimAktarim.swift`
+(Android `cekirdek/.../BalDefterimAktarim.kt` ile birebir, 4 test her iki tarafta).
 
 | Bal Defterim | BeeBook |
 |---|---|
-| `urunler` `{id, ad, birim, zekat, pasif}` + `fiyatlar` | `settings.stockTypes` `{v, l, unit, zakat, pasif}` + `stockPrices`; süzme/petek/karakovan → `suzme_bal`/`petek_bal`/`karakovan_bal` |
-| `hasatlar` `{urun, miktar, tarih, aciklama, tip}` | `stock` `action:"in"`; `tip:"devir"` → not "… devri" (zekata girmez) |
-| `siparisler` `{musteri, tel, urun, miktar, fiyat, tutar, tarih, aciklama, hediye, teslim, odendi, odenen}` | `sales` (`total = tutar ?? miktar*fiyat`; ödeme: hediye → `hediye`, tam → `paid`, `odenen>0` → `partial`+`paidAmount`, yoksa `pending`; `teslim:false` → `orderStatus:"preorder"`) + `saleId`'li stok `out` kaydı |
-| `zekatlar` `{urun, miktar, tarih}` | `payment:"zekat"` satış + stok `out` |
-| `sezonlar` | `seasons` `{id, year, name, start}` |
+| `urunler` + `fiyatlar` | süzme/petek/karakovan → `suzme_bal`/`petek_bal`/`karakovan_bal`; `ana-ari` → `ana_ari`; diğerleri ada göre eşleşir, yoksa yeni `stockTypes` ürünü. Fiyat yalnız boş olana yazılır |
+| `hasatlar` | `stock` `in` (`bd-h-<id>`); `tip:"devir"` → not "Bal Defterim devri" (zekata girmez) |
+| `siparisler` | `sales` (`bd-s-<id>`): hediye → `hediye` (tutar 0), `odendi` → `paid`, `odenen>0` → `partial`, yoksa `pending`; `teslim:false` → `preorder`; stok `out` (`bd-o-…`, saleId'li) |
+| `zekatlar` | `payment:"zekat"` satış (`bd-z-<id>`) + stok `out` |
+| `sezonlar` | yalnız BeeBook'ta o yıl yoksa `seasons` (`bd-sez-<id>`, start = yıl-01-01); kayıtlar tarihine göre sezona düşer |
 
-- Kimlikler `bd-<eski id>` → aynı yedek ikinci kez yüklenirse kopya oluşmaz (güncellenir).
-- Çıta adedi (`cita_adet`) taşınmaz (çıta takibi istenmedi).
-- Yüklemeden önce özet + onay ("N sipariş, N hasat eklenecek"): aynı satışlar BeeBook'a elle de girildiyse çift sayılır.
+- Mevcut veri silinmez; aynı yedek ikinci kez yüklenirse kopya oluşmaz (aynı kimlikler güncellenir).
+- Çıta adedi (`cita_adet`) taşınmaz.
+- Onay penceresinde özet ("N sipariş · N hasat …") + çift sayım uyarısı.
+
+### 17 Kas 2026 değişiklikleri (Android ile aynı)
+- Ana Sayfa: hızlı erişim kaydırılabilir, 12 simge (Daha sayfaları `menu.dahaIstegi` ile açılır), ekran kenarına uzanır.
+- Ana Sayfa: "Yapılan İşler" kartı kaldırıldı (Yapılacaklar'dan açılıyor); en alta ana arı ırk/yaş özeti (`IrkOzeti`).
+- Stok: "Son Satışlar" aktif sezondan (önceden tüm sezonlar); "Gider Özeti" ikinci sırada.
+- Alt menü petek ve arı 4 pt aşağı.
+- Bekleyen (yalnız Android'de): ana sayfa hava kartı → geniş Hava sayfası (24 saat, 7 gün, yağış/rüzgâr, "Arıcılık için" yorumu).

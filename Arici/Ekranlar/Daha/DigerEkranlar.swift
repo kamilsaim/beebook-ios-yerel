@@ -152,6 +152,9 @@ struct YedekEkrani: View {
     @State private var disari = false
     @State private var iceri = false
     @State private var bekleyenIce: (BBVeri, Ayarlar?)?
+    /// Dosya seçici Bal Defterim yedeği için mi açıldı (tek `fileImporter`; iki tane aynı görünümde çakışır).
+    @State private var balModu = false
+    @State private var bekleyenBal: BalAktarim?
     @State private var mesaj: String?
 
     var body: some View {
@@ -159,7 +162,10 @@ struct YedekEkrani: View {
             Section(footer: Text("Yedek dosyası web Beebook ile aynı biçimdedir; iki yönde de yüklenebilir.")) {
                 if let s = depo.ayarlar.lastBackup { Text("Son yedek: \(kisaTarih(s))") }
                 Button { disari = true } label: { Label("Yedek al (JSON)", systemImage: "square.and.arrow.up") }
-                Button { iceri = true } label: { Label("Yedek yükle", systemImage: "square.and.arrow.down") }
+                Button { balModu = false; iceri = true } label: { Label("Yedek yükle", systemImage: "square.and.arrow.down") }
+            }
+            Section(header: Text("Bal Defterim"), footer: Text("Bal Defterim'den aldığın yedeği (bal-defterim-yedek-….json) yükle: siparişler satışa, hasatlar stoğa, zekatlar zekat kaydına çevrilir. Mevcut kayıtların silinmez; aynı yedeği yeniden yüklersen kopya oluşmaz, güncellenir.")) {
+                Button { balModu = true; iceri = true } label: { Label("Bal Defterim yedeğini içe aktar", systemImage: "tray.and.arrow.down") }
             }
             if let mesaj { Section { Text(mesaj) } }
         }
@@ -170,10 +176,32 @@ struct YedekEkrani: View {
             guard case .success(let url) = s else { return }
             let erisim = url.startAccessingSecurityScopedResource()
             defer { if erisim { url.stopAccessingSecurityScopedResource() } }
+            if balModu {
+                guard let j = try? JSONDecoder().decode(JSONDeger.self, from: Data(contentsOf: url)) else {
+                    mesaj = "Yedek okunamadı: dosya bozuk ya da Bal Defterim yedeği değil."; return
+                }
+                if balDefterimYedegiMi(j) { bekleyenBal = balDefterimAktarimi(j, veri: depo.veri, ayarlar: depo.ayarlar) }
+                else { mesaj = "Bu dosya Bal Defterim yedeği değil." }
+                return
+            }
             do {
                 let j = try JSONDecoder().decode(JSONDeger.self, from: Data(contentsOf: url))
                 bekleyenIce = try yedegiNormallestir(j, buYil: Calendar.current.component(.year, from: Date()))
             } catch { mesaj = "Yedek okunamadı: dosya bozuk ya da Beebook yedeği değil." }
+        }
+        .alert("Bal Defterim yedeği eklensin mi?", isPresented: Binding(get: { bekleyenBal != nil }, set: { if !$0 { bekleyenBal = nil } })) {
+            Button("Ekle") {
+                if let t = bekleyenBal {
+                    depo.ayarDegistir { t.ayarlaraUygula(&$0) }
+                    let urunler = depo.urunler
+                    depo.degistir { v in t.veriyeUygula(&v) { u in urunler.first { $0.v == u }.flatMap { Birim(rawValue: $0.unit) } } }
+                    mesaj = "Bal Defterim yedeği eklendi: \(t.ozet)."
+                }
+                bekleyenBal = nil
+            }
+            Button("Vazgeç", role: .cancel) { bekleyenBal = nil }
+        } message: {
+            Text("\(bekleyenBal?.ozet ?? "") eklenecek.\n\nBu satışları BeeBook'a elle de girdiysen iki kez sayılır.")
         }
         .confirmationDialog("Yedek yüklensin mi?", isPresented: Binding(get: { bekleyenIce != nil }, set: { if !$0 { bekleyenIce = nil } }), titleVisibility: .visible) {
             Button("Yükle (mevcut verinin yerine)", role: .destructive) {
