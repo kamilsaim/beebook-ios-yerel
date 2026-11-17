@@ -11,6 +11,9 @@ struct StokGorunumu: View {
     @State private var giris = false
     @State private var zekat = false
     @State private var rapor = false
+    /// Stok hareketine dokununca açılan kayıt (satış / hasat / elle giriş-çıkış).
+    @State private var hareketForm: HareketHedefi?
+    @State private var tumHareketler = false
 
     var body: some View {
         let urunler = depo.urunler
@@ -35,6 +38,13 @@ struct StokGorunumu: View {
         .sheet(isPresented: $giris) { StokGirisFormu() }
         .sheet(isPresented: $zekat) { ZekatSayfasi() }
         .sheet(isPresented: $rapor) { StokRaporuSayfasi() }
+        .sheet(item: $hareketForm) { h in
+            switch h {
+            case .satis(let id): SatisFormu(satisId: id)
+            case .hasat(let id): HasatFormu(hasatId: id)
+            case .giris(let id): StokGirisFormu(kayitId: id)
+            }
+        }
     }
 
     // MARK: Ürün stok özeti
@@ -199,7 +209,9 @@ struct StokGorunumu: View {
     }
 
     private func hareketler(_ urunler: [UrunTanimi]) -> some View {
-        let son = depo.veri.stokKayitlari.sorted { ($0.date ?? "") > ($1.date ?? "") }.prefix(6)
+        // Aktif sezonun hareketleri (bakiye sezon-üstüdür; liste sezona göre). Satıra basınca kaydın kendisi açılır.
+        let tum = depo.sezonda(depo.veri.stokKayitlari).sorted { ($0.date ?? "") > ($1.date ?? "") }
+        let son = tumHareketler ? tum : Array(tum.prefix(6))
         return Kart {
             HStack {
                 Image(systemName: "arrow.left.arrow.right").foregroundStyle(Renk.orman2)
@@ -207,8 +219,9 @@ struct StokGorunumu: View {
                 Spacer()
                 Button("Rapor") { rapor = true }.font(Yazi.etiket).foregroundStyle(Renk.orman2)
             }
-            if son.isEmpty { Text("Henüz stok hareketi yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
-            ForEach(Array(son), id: \.id) { k in
+            if son.isEmpty { Text("Bu sezon stok hareketi yok.").font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
+            else { Text("Düzenlemek için harekete dokun.").font(Yazi.minik).foregroundStyle(Renk.metin3) }
+            ForEach(son, id: \.id) { k in
                 let giris = k.action == "in"
                 let ad = urunler.first { $0.v == k.product }?.temizAd ?? (k.product ?? "Ürün")
                 HStack(spacing: 8) {
@@ -216,7 +229,7 @@ struct StokGorunumu: View {
                         .foregroundStyle(giris ? Renk.iyi : Renk.kotu)
                         .frame(width: 26, height: 26).background((giris ? Renk.iyi : Renk.kotu).opacity(0.14), in: Circle())
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(ad + " · " + (giris ? (k.milkId != nil ? "Hasat" : "Giriş") : (k.saleId != nil ? "Satış" : "Çıkış")))
+                        Text(ad + " · " + hareketTuru(k))
                             .font(Yazi.kucukOrta).lineLimit(1)
                         Text([k.date.map { kisaTarih($0) }, k.note].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
                             .font(Yazi.minik).foregroundStyle(Renk.metin3).lineLimit(1)
@@ -228,8 +241,27 @@ struct StokGorunumu: View {
                         .background((giris ? Renk.iyi : Renk.kotu).opacity(0.12), in: Capsule())
                 }
                 .padding(.vertical, 2)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if let s = k.saleId { hareketForm = .satis(s) }
+                    else if let m = k.milkId { hareketForm = .hasat(m) }
+                    else { hareketForm = .giris(k.id) }
+                }
+            }
+            if tum.count > 6 {
+                Button(tumHareketler ? "Daha az göster" : "Tümünü göster (\(tum.count))") { tumHareketler.toggle() }
+                    .font(Yazi.etiket).foregroundStyle(Renk.orman2).frame(maxWidth: .infinity)
             }
         }
+    }
+
+    private func hareketTuru(_ k: StokKaydi) -> String {
+        if k.action == "in" { return k.milkId != nil ? "Hasat" : "Giriş" }
+        guard k.saleId != nil else { return "Çıkış" }
+        let not = k.note ?? ""
+        if not.hasPrefix("Hediye:") { return "Hediye" }
+        if not.hasPrefix("Zekat:") { return "Zekat" }
+        return "Satış"
     }
 
     // MARK: Gider özeti (bu ay)
@@ -287,18 +319,30 @@ struct StokGorunumu: View {
 }
 
 /// Stok girişi (web stock-modal: ürün, miktar, tarih, not, birim fiyat).
+enum HareketHedefi: Identifiable {
+    case satis(String), hasat(String), giris(String)
+    var id: String {
+        switch self { case .satis(let i): return "s" + i; case .hasat(let i): return "h" + i; case .giris(let i): return "g" + i }
+    }
+}
+
+/// Elle stok girişi; `kayitId` verilirse o giriş/çıkış kaydını düzenler ya da siler.
 struct StokGirisFormu: View {
     @Environment(VeriDeposu.self) private var depo
     @Environment(\.dismiss) private var kapat
+    var kayitId: String? = nil
+    @State private var silOnay = false
     @State private var urunId = ""
     @State private var miktarDeger: Double = 0
     @State private var tarih = Date()
     @State private var not = ""
     @State private var fiyat: Double = 0
 
+    private var eski: StokKaydi? { kayitId.flatMap { id in depo.veri.stokKayitlari.first { $0.id == id } } }
+
     var body: some View {
         let urunler = depo.urunler
-        let birim = urunler.first { $0.v == urunId }?.unit ?? ""
+        let birim = urunler.first { $0.v == urunId }?.unit ?? (eski?.unit ?? "")
         NavigationStack {
             Form {
                 Picker("Ürün", selection: $urunId) { ForEach(urunler.filter { $0.pasif != true || $0.v == urunId }, id: \.v) { Text($0.temizAd).tag($0.v) } }
@@ -306,18 +350,29 @@ struct StokGirisFormu: View {
                 DatePicker("Tarih", selection: $tarih, displayedComponents: .date)
                 HStack { Text("Birim fiyat"); TextField("₺", value: $fiyat, format: .number).keyboardType(.decimalPad).multilineTextAlignment(.trailing) }
                 TextField("Not (ör. Yaz hasadı)", text: $not)
+                if eski != nil {
+                    Section { Button(eski?.action == "out" ? "Çıkışı sil" : "Girişi sil", role: .destructive) { silOnay = true } }
+                }
             }
-            .navigationTitle("Stok Girişi")
+            .navigationTitle(eski == nil ? "Stok Girişi" : (eski?.action == "out" ? "Stok Çıkışı" : "Stok Girişini Düzenle"))
+            .confirmationDialog(eski?.action == "out" ? "Stok çıkışı silinsin mi?" : "Stok girişi silinsin mi?", isPresented: $silOnay, titleVisibility: .visible) {
+                Button("Sil", role: .destructive) {
+                    if let id = kayitId { depo.degistir { v in v.stokKayitlari = v.stokKayitlari.filter { $0.id != id } } }
+                    kapat()
+                }
+            } message: { Text("Stok miktarı buna göre değişir.") }
             .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Kaydet") {
+                        let onceki = eski
                         depo.degistir { v in
-                            var k = StokKaydi(["id": .metin(yeniKimlik())])
-                            k.product = urunId; k.action = "in"; k.amount = miktarDeger; k.unit = birim; k.date = bugunISO(tarih); k.note = not
-                            v.stokKayitlari = v.stokKayitlari + [k]
+                            var k = onceki ?? StokKaydi(["id": .metin(yeniKimlik())])
+                            k.product = urunId; k.action = onceki?.action ?? "in"; k.amount = miktarDeger; k.unit = birim; k.date = bugunISO(tarih); k.note = not
+                            if onceki == nil { v.stokKayitlari = v.stokKayitlari + [k] }
+                            else { v.stokKayitlari = v.stokKayitlari.map { $0.id == k.id ? k : $0 } }
                         }
                         if fiyat > 0 { depo.ayarDegistir { a in var p = a.stockPrices; p[urunId] = fiyat; a.stockPrices = p } }
                         kapat()
@@ -326,6 +381,9 @@ struct StokGirisFormu: View {
                 }
             }
             .onAppear {
+                if let e = eski {
+                    urunId = e.product ?? ""; miktarDeger = e.amount ?? 0; tarih = isoTarih(e.date) ?? Date(); not = e.note ?? ""
+                }
                 if urunId.isEmpty { urunId = urunler.first?.v ?? "" }
                 fiyat = depo.ayarlar.stockPrices[urunId] ?? 0
             }
