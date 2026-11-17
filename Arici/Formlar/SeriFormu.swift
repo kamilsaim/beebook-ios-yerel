@@ -25,24 +25,27 @@ struct SeriFormu: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Seri") {
+                Section { onizleme }.listeBasligi()
+                Section(header: Label("Seri", systemImage: "rosette")) {
                     TextField("Seri adı (ör. Seri A-26)", text: $ad)
-                    Picker("Irk", selection: $irk) { Text("—").tag(""); ForEach(depo.irklar, id: \.self) { Text($0) } }
-                    TextField("Kuşak", text: $kusak)
+                    Picker("Irk", selection: $irk) { Text("—").tag(""); ForEach(depo.irklar + (irk.isEmpty || depo.irklar.contains(irk) ? [] : [irk]), id: \.self) { Text($0) } }
+                    Picker("Kuşak", selection: $kusak) { Text("—").tag(""); ForEach(kusakSecenekleri + (kusak.isEmpty || kusakSecenekleri.contains(kusak) ? [] : [kusak]), id: \.self) { Text($0) } }
                     Picker("Damızlık kovan", selection: $damizlik) { Text("—").tag(""); ForEach(kovanlar, id: \.id) { Text("Kovan \($0.num)").tag($0.id) } }
                     Picker("Başlatıcı kovan", selection: $baslatici) { Text("—").tag(""); ForEach(kovanlar, id: \.id) { Text("Kovan \($0.num)").tag($0.id) } }
                     DatePicker("Larva transferi", selection: $transfer, displayedComponents: .date)
                 }
-                Section("Sonuç") {
-                    TextField("Aşılanan", text: $graft).keyboardType(.numberPad)
-                    TextField("Tutan (meme)", text: $tutan).keyboardType(.numberPad)
-                        .onSubmit(memeListesiniGuncelle)
-                    TextField("Çıkan", text: $cikan).keyboardType(.numberPad)
-                        .onSubmit(memeListesiniGuncelle)
+                Section(header: Label("Sonuç", systemImage: "chart.bar"), footer: Text("Meme listesi Kaydet'te tutan/çıkan sayısına göre güncellenir.")) {
+                    sayiAdimi("Aşılanan", $graft)
+                    sayiAdimi("Tutan (meme)", $tutan)
+                    sayiAdimi("Çıkan", $cikan)
+                    if let g = Int(graft), let t = Int(tutan), g > 0, t > 0 {
+                        HStack { Text("Tutma oranı"); Spacer(); Text("%\(Int((Double(t) * 100 / Double(g)).rounded()))").font(Yazi.nunito(16, .bold)).foregroundStyle(t * 100 / g >= 60 ? Renk.iyi : Renk.uyari) }
+                    }
                     Picker("Durum", selection: $durum) { Text("Aktif").tag("active"); Text("Tamamlandı").tag("completed"); Text("Başarısız").tag("failed") }
+                        .pickerStyle(.segmented)
                 }
                 if !memeler.isEmpty {
-                    Section("Memeler (\(memeler.count))") {
+                    Section(header: Label("Memeler (\(memeler.count))", systemImage: "hexagon")) {
                         ForEach($memeler, id: \.id) { $m in
                             HStack {
                                 Text("Meme \(m.num ?? "")").frame(width: 80, alignment: .leading)
@@ -58,7 +61,7 @@ struct SeriFormu: View {
                         }
                     }
                 }
-                Section { TextField("Not", text: $not, axis: .vertical) }
+                Section(header: Label("Not", systemImage: "note.text")) { TextField("Not", text: $not, axis: .vertical) }
                 if seriId != nil { Section { Button("Seriyi sil", role: .destructive) { silOnay = true } } }
             }
             .navigationTitle(seriId == nil ? "Yeni Seri" : "Seri")
@@ -78,6 +81,35 @@ struct SeriFormu: View {
 
     private var kovanlar: [Kovan] { depo.veri.kovanlar.sorted { $0.numara < $1.numara } }
 
+    private func sayiAdimi(_ etiket: String, _ deger: Binding<String>) -> some View {
+        Stepper(value: Binding(get: { Int(deger.wrappedValue) ?? 0 }, set: { deger.wrappedValue = $0 > 0 ? String($0) : "" }), in: 0...500) {
+            HStack { Text(etiket); Spacer(); Text(deger.wrappedValue.isEmpty ? "—" : deger.wrappedValue).font(Yazi.nunito(17, .bold)).foregroundStyle(Renk.orman2) }
+        }
+    }
+
+    /// Canlı önizleme: ad, ırk · kuşak, çıkım tarihi ve durum.
+    private var onizleme: some View {
+        let adimlar = gelisimTakvimi(transfer: bugunISO(transfer))
+        return HStack(spacing: 12) {
+            Image("UrunAnaari").resizable().scaledToFill().frame(width: 72, height: 72)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Renk.bal, lineWidth: 1.5))
+                .padding(.leading, 14).padding(.top, 6)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(ad.isEmpty ? (seriId == nil ? "Yeni seri" : "Seri") : ad).font(Yazi.nunito(20, .bold)).foregroundStyle(Renk.orman).lineLimit(1)
+                Text([irk, kusak].filter { !$0.isEmpty }.joined(separator: " · ").isEmpty ? "Irk seçilmedi" : [irk, kusak].filter { !$0.isEmpty }.joined(separator: " · "))
+                    .font(Yazi.kucuk).foregroundStyle(Renk.metin2).lineLimit(1)
+                HStack(spacing: 5) {
+                    if let son = adimlar.last { Rozet(metin: "Çıkım \(kisaTarih(son.tarih))", simge: "calendar", arkaRenk: Renk.bal.opacity(0.2)) }
+                    Rozet(metin: durum == "completed" ? "Tamamlandı" : durum == "failed" ? "Başarısız" : "Aktif", tur: durum == "failed" ? .kotu : durum == "completed" ? .notr : .iyi)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 18)
+        .dogaZemini()
+    }
+
     /// Tutan sayısı kadar meme; çıkan girildiyse min(çıkan, tutan)'a kısalır, gerekirse tekrar büyür (web v2.4).
     private func memeListesiniGuncelle() {
         let t = Int(tutan) ?? 0
@@ -92,7 +124,7 @@ struct SeriFormu: View {
         guard !yuklendi else { return }
         yuklendi = true
         guard let s = depo.veri.seriler.first(where: { $0.id == seriId }) else { return }
-        ad = s.name ?? ""; irk = s.race ?? ""; kusak = s.generation ?? ""; damizlik = s.motherHive ?? ""; baslatici = s.starterHive ?? ""
+        ad = s.name ?? ""; irk = s.race ?? ""; kusak = kusakDuzelt(s.generation); damizlik = s.motherHive ?? ""; baslatici = s.starterHive ?? ""
         transfer = isoTarih(s.transfer) ?? Date()
         graft = s.grafted.map { String(Int($0)) } ?? ""; tutan = s.accepted.map { String(Int($0)) } ?? ""
         cikan = s.emerged.flatMap { $0 > 0 ? String(Int($0)) : nil } ?? ""

@@ -38,10 +38,16 @@ struct SatisFormu: View {
                 Section { satisOzeti }.listeBasligi()
                 Section {
                     HStack {
-                        TextField("Ad", text: $musteri).textInputAutocapitalization(.words)
-                        Button { rehber = true } label: { Label("Rehber", systemImage: "person.crop.circle.badge.plus") }
-                            .buttonStyle(.bordered).tint(Renk.orman2)
-                            .accessibilityLabel("Rehberden kişi seç")
+                        Image(systemName: "person").foregroundStyle(kartAltin).frame(width: 22)
+                        TextField("Müşteri adı", text: $musteri).textInputAutocapitalization(.words)
+                        Button { rehber = true } label: {
+                            Label("Rehber", systemImage: "person.crop.rectangle").font(Yazi.kucukOrta).foregroundStyle(Renk.orman2)
+                                .padding(.horizontal, 12).padding(.vertical, 7)
+                                .background(Renk.orman2.opacity(0.12), in: Capsule())
+                                .overlay(Capsule().strokeBorder(Renk.orman2.opacity(0.25)))
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Rehberden kişi seç")
                     }
                     .background(RehberSecici(acik: $rehber) { ad, tel in
                         musteri = ad
@@ -49,12 +55,34 @@ struct SatisFormu: View {
                     }.frame(width: 0, height: 0))
                     if !oneriler.isEmpty {
                         ScrollView(.horizontal) {
-                            HStack { ForEach(oneriler, id: \.self) { o in Button(o) { musteriSec(o) }.buttonStyle(.bordered).tint(Renk.orman2) } }
+                            HStack(spacing: 6) {
+                                ForEach(oneriler, id: \.self) { o in
+                                    Button { musteriSec(o) } label: {
+                                        HStack(spacing: 6) {
+                                            Text(String(o.split(separator: " ").prefix(2).compactMap(\.first)).uppercased(with: Locale(identifier: "tr")))
+                                                .font(Yazi.nunito(11, .bold)).foregroundStyle(.white)
+                                                .frame(width: 26, height: 26)
+                                                .background(MusteriKartiGorunumu.renkler[o.unicodeScalars.reduce(0) { $0 + Int($1.value) } % MusteriKartiGorunumu.renkler.count], in: Circle())
+                                            Text(o).font(Yazi.kucukOrta).foregroundStyle(Renk.metin).lineLimit(1)
+                                        }
+                                        .padding(.leading, 4).padding(.trailing, 12).padding(.vertical, 4)
+                                        .background(Renk.kart, in: Capsule())
+                                        .overlay(Capsule().strokeBorder(Renk.krem2))
+                                    }
+                                    .buttonStyle(.borderless)
+                                }
+                            }
                         }
                         .scrollIndicators(.hidden)
                     }
-                    TextField("Telefon (isteğe bağlı)", text: $telefon).keyboardType(.phonePad)
-                    DatePicker("Tarih", selection: $tarih, displayedComponents: .date)
+                    HStack {
+                        Image(systemName: "phone").foregroundStyle(kartAltin).frame(width: 22)
+                        TextField("Telefon (isteğe bağlı)", text: $telefon).keyboardType(.phonePad)
+                    }
+                    HStack {
+                        Image(systemName: "calendar").foregroundStyle(kartAltin).frame(width: 22)
+                        DatePicker("Tarih", selection: $tarih, displayedComponents: .date)
+                    }
                 } header: { Label("Müşteri", systemImage: "person") }
                 ForEach($kalemler) { $k in
                     Section(header: Label(kalemler.count > 1 ? "Ürün \((kalemler.firstIndex(of: k) ?? 0) + 1)" : "Ürün", systemImage: "basket")) {
@@ -243,16 +271,26 @@ struct KalemDuzenleyici: View {
     private var adim: Double { switch kalem.birim { case .kg, .lt: return 0.5; case .gr, .ml: return 50; case .adet: return 1 } }
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 7)], spacing: 7) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 7), count: 3), spacing: 7) {
             ForEach(urunler, id: \.v) { u in
+                let secili = kalem.urunId == u.v
+                let stok = stokSeviyesi(depo.veri, urun: u.v)
+                let sekil = RoundedRectangle(cornerRadius: 14, style: .continuous)
                 Button { sec(u) } label: {
-                    VStack(spacing: 3) {
-                        UrunGorseli(urun: u, boyut: 40, yaricap: 10)
-                        Text(u.temizAd).font(Yazi.minik).lineLimit(1).minimumScaleFactor(0.8)
+                    VStack(spacing: 2) {
+                        UrunGorseli(urun: u, boyut: 48, yaricap: 12)
+                        Text(u.temizAd).font(Yazi.nunito(12, .bold)).lineLimit(1).minimumScaleFactor(0.8)
+                        Text(miktar(stok, u.unit)).font(Yazi.nunito(10)).foregroundStyle(stok <= 0 ? Renk.kotu : Renk.metin3).lineLimit(1)
                     }
-                    .padding(.vertical, 6).frame(maxWidth: .infinity)
-                    .background(kalem.urunId == u.v ? Color(red: 1, green: 0.95, blue: 0.81) : Renk.kart, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(kalem.urunId == u.v ? Renk.bal : Renk.krem2, lineWidth: 2))
+                    .padding(.top, 8).padding(.bottom, 7).padding(.horizontal, 4).frame(maxWidth: .infinity)
+                    .background(secili ? AnyShapeStyle(LinearGradient(colors: [Color(red: 1, green: 0.96, blue: 0.84), Color(red: 1, green: 0.9, blue: 0.66)], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(Renk.kart), in: sekil)
+                    .overlay(sekil.strokeBorder(secili ? Renk.bal : Renk.krem2, lineWidth: secili ? 2 : 1))
+                    .overlay(alignment: .topTrailing) {
+                        if secili {
+                            Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
+                                .frame(width: 18, height: 18).background(Renk.orman2, in: Circle()).padding(4)
+                        }
+                    }
                     .foregroundStyle(Renk.metin)
                 }
                 .buttonStyle(.plain)
@@ -263,45 +301,62 @@ struct KalemDuzenleyici: View {
             ForEach(Birim.uyumlular(urunBirimi), id: \.self) { Text($0.rawValue).tag($0) }
         }
         .pickerStyle(.segmented)
-        HStack {
-            Button { kalem.miktar = max(adim, ((kalem.miktar - adim) * 100).rounded() / 100); kalem.toplamElle = nil } label: { Image(systemName: "minus.circle.fill").font(.system(size: 34)) }
-                .buttonStyle(.plain).foregroundStyle(Renk.orman2)
-            Spacer()
+        HStack(spacing: 10) {
+            adimDugmesi("minus") { kalem.miktar = max(adim, ((kalem.miktar - adim) * 100).rounded() / 100); kalem.toplamElle = nil }
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 TextField("0", value: $kalem.miktar, format: .number).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-                    .font(Yazi.nunito(30, .bold)).frame(maxWidth: 120).onChange(of: kalem.miktar) { _, _ in kalem.toplamElle = nil }
-                Text(kalem.birim.rawValue).font(Yazi.govdeOrta).foregroundStyle(.secondary)
+                    .font(Yazi.nunito(28, .bold)).frame(maxWidth: 110).onChange(of: kalem.miktar) { _, _ in kalem.toplamElle = nil }
+                Text(kalem.birim.rawValue).font(Yazi.nunito(16, .bold)).foregroundStyle(dahaAltin)
             }
-            Spacer()
-            Button { kalem.miktar = ((kalem.miktar + adim) * 100).rounded() / 100; kalem.toplamElle = nil } label: { Image(systemName: "plus.circle.fill").font(.system(size: 34)) }
-                .buttonStyle(.plain).foregroundStyle(Renk.orman2)
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .background(Renk.bal.opacity(0.1), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Renk.bal.opacity(0.35)))
+            adimDugmesi("plus") { kalem.miktar = ((kalem.miktar + adim) * 100).rounded() / 100; kalem.toplamElle = nil }
         }
         if !ucretsiz {
-            HStack {
-                Text("Birim fiyat")
-                Spacer()
-                TextField("0", value: $kalem.fiyat, format: .number).keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(maxWidth: 110)
-                Text("₺ / \(kalem.birim.rawValue)").foregroundStyle(.secondary)
-            }
-            HStack {
-                Text("Tutar")
-                Spacer()
-                TextField("0", value: Binding(get: { kalem.toplamElle ?? kalem.miktar * kalem.fiyat }, set: { kalem.toplamElle = $0 }), format: .number)
-                    .keyboardType(.decimalPad).multilineTextAlignment(.trailing).frame(maxWidth: 110)
-                Text("₺").foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                fiyatAlani("tag", "Birim fiyat (₺/\(kalem.birim.rawValue))", $kalem.fiyat, vurgu: false)
+                fiyatAlani("banknote", "Tutar (₺)", Binding(get: { kalem.toplamElle ?? kalem.miktar * kalem.fiyat }, set: { kalem.toplamElle = $0 }), vurgu: true)
             }
         }
         if urun != nil {
             let mevcut = stokSeviyesi(depo.veri, urun: kalem.urunId)
             let dusen = Birim.cevir(kalem.miktar, kalem.birim, urunBirimi) ?? kalem.miktar
-            HStack {
-                Text("Stok")
+            let eksi = mevcut - dusen < 0
+            HStack(spacing: 6) {
+                Image(systemName: "shippingbox").foregroundStyle(eksi ? Renk.kotu : Renk.iyi)
+                Text(eksi ? "Stok yetmiyor" : "Stok").font(Yazi.kucukOrta).foregroundStyle(eksi ? Renk.kotu : Renk.metin)
                 Spacer()
-                Text("\(miktar(mevcut, urunBirimi.rawValue)) → ").foregroundStyle(.secondary)
-                Text(miktar(mevcut - dusen, urunBirimi.rawValue)).foregroundStyle(mevcut - dusen < 0 ? Renk.kotu : .primary)
+                Text(miktar(mevcut, urunBirimi.rawValue)).foregroundStyle(.secondary)
+                Image(systemName: "arrow.right").font(.system(size: 11)).foregroundStyle(Renk.metin3)
+                Text(miktar(mevcut - dusen, urunBirimi.rawValue)).font(Yazi.nunito(13, .bold)).foregroundStyle(eksi ? Renk.kotu : Renk.metin)
             }
             .font(Yazi.kucuk)
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background((eksi ? Renk.kotu : Renk.iyi).opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
+    }
+
+    private func adimDugmesi(_ simge: String, _ f: @escaping () -> Void) -> some View {
+        Button(action: f) {
+            Image(systemName: simge).font(.system(size: 18, weight: .bold)).foregroundStyle(.white)
+                .frame(width: 46, height: 46)
+                .background(LinearGradient(colors: [Renk.orman2, Renk.orman], startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
+                .overlay(Circle().strokeBorder(Renk.bal.opacity(0.5)))
+        }
+        .buttonStyle(.borderless)
+    }
+
+    private func fiyatAlani(_ simge: String, _ etiket: String, _ deger: Binding<Double>, vurgu: Bool) -> some View {
+        let sekil = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return VStack(alignment: .leading, spacing: 4) {
+            Label(etiket, systemImage: simge).font(Yazi.minik).foregroundStyle(Renk.metin2).lineLimit(1).minimumScaleFactor(0.8)
+            TextField("0", value: deger, format: .number).keyboardType(.decimalPad).font(Yazi.nunito(18, .bold))
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(vurgu ? Renk.orman2.opacity(0.08) : Renk.kart, in: sekil)
+        .overlay(sekil.strokeBorder(vurgu ? Renk.orman2.opacity(0.35) : Renk.krem2))
     }
 
     private func sec(_ u: UrunTanimi) {
