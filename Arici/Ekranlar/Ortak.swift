@@ -32,12 +32,12 @@ extension Kovan {
     /// Kart ışıması: ana var yeşil, bakire mavi, anasız kırmızı, meme mor, bilinmiyor bal, arısız yok.
     var isimaRengi: Color? {
         switch queenStatus {
-        case "yes": return Color(red: 0.36, green: 0.85, blue: 0.45)
-        case "bakire", "new": return Color(red: 0.4, green: 0.68, blue: 1)
-        case "no": return Color(red: 1, green: 0.36, blue: 0.3)
-        case "meme": return Color(red: 0.74, green: 0.5, blue: 1)
+        case "yes": return KovanRenkAyari.isimaRengi("yes")
+        case "bakire", "new": return KovanRenkAyari.isimaRengi("bakire")
+        case "no": return KovanRenkAyari.isimaRengi("no")
+        case "meme": return KovanRenkAyari.isimaRengi("meme")
         case "empty": return nil
-        default: return Renk.bal
+        default: return KovanRenkAyari.isimaRengi("unknown")
         }
     }
     var numara: Int { Int(num.trimmingCharacters(in: .whitespaces)) ?? Int.max }

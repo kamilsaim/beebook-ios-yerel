@@ -67,6 +67,17 @@ final class OdemeTests: XCTestCase {
                  satisK(["total": .tam(999)])]
         XCTAssertEqual(bekleyenToplam(satislar: s), 500)
     }
+    // Karar (Kamil, 18 Kas): ön sipariş alacağa sayılmaz; teslim edilince alacağa geçer.
+    func test_onSiparisAlacagaSayilmaz() {
+        let bekleyenOn = satisK(["total": .tam(600), "payment": .metin("pending"), "orderStatus": .metin("preorder")])
+        let kismiOn = satisK(["total": .tam(800), "payment": .metin("partial"), "paidAmount": .tam(300), "orderStatus": .metin("preorder")])
+        XCTAssertEqual(kalan(bekleyenOn.ham), 0)
+        XCTAssertEqual(kalan(kismiOn.ham), 0)
+        XCTAssertEqual(odenen(kismiOn.ham), 300)
+        let teslim = satisK(["total": .tam(600), "payment": .metin("pending"), "orderStatus": .metin("delivered")])
+        XCTAssertEqual(kalan(teslim.ham), 600)
+        XCTAssertEqual(bekleyenToplam(satislar: [bekleyenOn, kismiOn, teslim]), 600)
+    }
 }
 
 final class AnaAriTests: XCTestCase {

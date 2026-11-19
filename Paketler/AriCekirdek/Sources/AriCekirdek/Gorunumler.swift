@@ -21,6 +21,8 @@ public struct Kovan: HamKayitli, Equatable, Sendable {
     public var createdAt: String? { get { metin("createdAt") } set { metinYaz("createdAt", newValue) } }
     /// Öne çıkan (yıldızlı) kovan; false iken alan silinir.
     public var starred: Bool { get { bool("starred") == true } set { boolYaz("starred", newValue ? true : nil) } }
+    /// Kullanıcının renk durumu (settings.hiveMarks id).
+    public var mark: String? { get { metin("mark") } set { metinYaz("mark", newValue) } }
 }
 
 public struct Satis: HamKayitli, Equatable, Sendable {

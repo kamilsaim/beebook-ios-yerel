@@ -713,6 +713,7 @@ struct AyarlarEkrani: View {
     @State private var mesaj: String?
     @State private var yeniTip = ""
     @State private var yeniIrk = ""
+    @State private var renkler = false
 
     var body: some View {
         List {
@@ -766,6 +767,17 @@ struct AyarlarEkrani: View {
                     }
                     .buttonStyle(.borderless).disabled(yeniTip.isEmpty)
                 }
+            }
+            Section(header: Label("Kovan renkleri", systemImage: "paintpalette")) {
+                Button { renkler = true } label: {
+                    HStack {
+                        Label("Işıma ve renk durumları", systemImage: "paintpalette").foregroundStyle(Renk.metin)
+                        Spacer()
+                        Text(depo.ayarlar.hiveMarksOn ? "Açık" : "").font(Yazi.etiket).foregroundStyle(Renk.metin2)
+                        Image(systemName: "chevron.right").font(.system(size: 13)).foregroundStyle(Renk.metin3)
+                    }
+                }
+                .sheet(isPresented: $renkler) { KovanRenkleriSayfasi() }
             }
             Section(header: Label("Arı ırkları", systemImage: "ladybug"), footer: Text("Silmek için sola kaydır.")) {
                 ForEach(depo.irklar, id: \.self) { t in Label(t, systemImage: "ladybug").foregroundStyle(Renk.metin) }

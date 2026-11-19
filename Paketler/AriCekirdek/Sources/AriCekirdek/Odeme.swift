@@ -17,7 +17,9 @@ public func odenen(_ k: Kayit) -> Double {
     }
 }
 
+/// Alacak. Ön sipariş (`orderStatus = preorder`) teslim edilene dek alacağa sayılmaz (Kamil, 18 Kas).
 public func kalan(_ k: Kayit) -> Double {
+    if k["orderStatus"]?.metinDegeri == "preorder" { return 0 }
     switch odemeTuru(k) {
     case "pending": return tutar(k)
     case "partial": return max(0, tutar(k) - (k["paidAmount"]?.sayi ?? 0))

@@ -10,6 +10,7 @@ struct StokGorunumu: View {
     @State private var yeniUrun = false
     @State private var giris = false
     @State private var zekat = false
+    @State private var odemeListesi: KimlikKutusu?
     @State private var rapor = false
     /// Stok hareketine dokununca açılan kayıt (satış / hasat / elle giriş-çıkış).
     @State private var hareketForm: HareketHedefi?
@@ -30,8 +31,8 @@ struct StokGorunumu: View {
             giderOzeti
             sonSatislar(urunler)
             HStack(spacing: 10) {
-                hediyeZekat(baslik: "Hediye", simge: "gift", odeme: "hediye", urunler: urunler)
-                hediyeZekat(baslik: "Zekat", simge: "moon.stars", odeme: "zekat", urunler: urunler)
+                Button { odemeListesi = KimlikKutusu(id: "hediye") } label: { hediyeZekat(baslik: "Hediye", simge: "gift", odeme: "hediye", urunler: urunler) }.buttonStyle(.plain)
+                Button { odemeListesi = KimlikKutusu(id: "zekat") } label: { hediyeZekat(baslik: "Zekat", simge: "moon.stars", odeme: "zekat", urunler: urunler) }.buttonStyle(.plain)
             }
             otomatikBilgi
             hareketler(urunler)
@@ -40,6 +41,7 @@ struct StokGorunumu: View {
         .sheet(isPresented: $yeniUrun) { UrunFormu(urunId: nil) }
         .sheet(isPresented: $giris) { StokGirisFormu() }
         .sheet(isPresented: $zekat) { ZekatSayfasi() }
+        .sheet(item: $odemeListesi) { OdemeKayitlariSayfasi(tur: $0.id) }
         .sheet(isPresented: $rapor) { StokRaporuSayfasi() }
         .sheet(item: $hareketForm) { h in
             switch h {
@@ -156,12 +158,14 @@ struct StokGorunumu: View {
 
     @ViewBuilder
     private func odemeRozeti(_ s: Satis) -> some View {
+        if s.orderStatus == "preorder" && ["pending", "partial"].contains(s.payment ?? "") { Rozet(metin: "Ön sipariş", tur: .uyari) } else {
         switch s.payment {
         case "pending": Rozet(metin: "Bekliyor", tur: .uyari)
         case "partial": Rozet(metin: "Kısmi", tur: .uyari)
         case "hediye": Rozet(metin: "Hediye", tur: .mor)
         case "zekat": Rozet(metin: "Zekat", tur: .bilgi)
         default: Rozet(metin: "Ödendi", tur: .iyi)
+        }
         }
     }
 

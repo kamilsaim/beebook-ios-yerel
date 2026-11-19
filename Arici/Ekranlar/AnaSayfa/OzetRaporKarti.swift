@@ -106,13 +106,16 @@ struct SatisOzeti {
     struct Ay: Identifiable { let id: String; let ad: String; let tutar: Double }
     let toplam: Double
     let bekleyen: Double
+    let tahsil: Double
     let aylik: [Ay]
-    var tahsilatOrani: Double? { toplam > 0 ? max(0, toplam - bekleyen) / toplam : nil }
+    /// Tahsil edilen / (tahsil edilen + alacak). Ödenmemiş ön sipariş ikisine de girmez.
+    var tahsilatOrani: Double? { tahsil + bekleyen > 0 ? tahsil / (tahsil + bekleyen) : nil }
 
     @MainActor init(depo: VeriDeposu) {
         let satislar = depo.sezonda(depo.veri.satislar).filter { !["hediye", "zekat"].contains($0.payment ?? "") }
         toplam = satislar.reduce(0) { $0 + ($1.total ?? 0) }
         bekleyen = bekleyenToplam(satislar: satislar)
+        tahsil = satislar.reduce(0) { $0 + odenen($1.ham) }
         let c = Calendar.current
         let adlar = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"]
         aylik = (0..<6).reversed().compactMap { fark -> Ay? in

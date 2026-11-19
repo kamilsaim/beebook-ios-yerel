@@ -58,7 +58,7 @@ enum DisaAktar {
         let bekleyen = bekleyenToplam(satislar: satislar)
         let sezon = depo.veri.sezonlar.first { $0.id == depo.ayarlar.activeSeason }?.name ?? "Sezon"
         var l = ["🐝 BeeBook — \(sezon) satış raporu", "",
-                 "Satış: \(tl(toplam))", "Tahsil edilen: \(tl(toplam - bekleyen))", "Alacak: \(tl(bekleyen))", ""]
+                 "Satış: \(tl(toplam))", "Tahsil edilen: \(tl(ucretli.reduce(0) { $0 + odenen($1.ham) }))", "Alacak: \(tl(bekleyen))", ""]
         for g in satisRaporu(satislar) {
             let ad = g.anahtar.hasPrefix("urun_") ? (depo.urunler.first { $0.v == String(g.anahtar.dropFirst(5)) }?.temizAd ?? String(g.anahtar.dropFirst(5)))
                 : ["tur_queen": "Ana Arı", "tur_bee": "Arı Satışı", "tur_milk": "Arı Sütü"][g.anahtar] ?? "Diğer"

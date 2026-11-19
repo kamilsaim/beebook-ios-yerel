@@ -86,7 +86,7 @@ struct SatisFormu: View {
                 } header: { Label("Müşteri", systemImage: "person") }
                 ForEach($kalemler) { $k in
                     Section(header: Label(kalemler.count > 1 ? "Ürün \((kalemler.firstIndex(of: k) ?? 0) + 1)" : "Ürün", systemImage: "basket")) {
-                        KalemDuzenleyici(kalem: $k, urunler: urunler.filter { $0.pasif != true || $0.v == k.urunId }, ucretsiz: ucretsiz)
+                        KalemDuzenleyici(kalem: $k, urunler: urunler.filter { $0.pasif != true || $0.v == k.urunId }, ucretsiz: ucretsiz, satisId: satisId)
                         if kalemler.count > 1 {
                             Button("Bu ürünü çıkar", role: .destructive) { kalemler.removeAll { $0.id == k.id } }
                         }
@@ -265,6 +265,7 @@ struct KalemDuzenleyici: View {
     @Binding var kalem: SatisKalemi
     let urunler: [UrunTanimi]
     let ucretsiz: Bool
+    var satisId: String? = nil
 
     private var urun: UrunTanimi? { urunler.first { $0.v == kalem.urunId } }
     private var urunBirimi: Birim { Birim(rawValue: urun?.unit ?? "") ?? kalem.birim }
@@ -320,7 +321,9 @@ struct KalemDuzenleyici: View {
             }
         }
         if urun != nil {
-            let mevcut = stokSeviyesi(depo.veri, urun: kalem.urunId)
+            // Düzenlemede bu satışın kendi stok çıkışı zaten düşülmüş: önizlemede geri ekle (yoksa iki kez düşer).
+            let buSatisinCikisi = satisId.map { sid in depo.veri.stokKayitlari.filter { $0.saleId == sid && $0.product == kalem.urunId && $0.action == "out" }.reduce(0) { $0 + ($1.amount ?? 0) } } ?? 0
+            let mevcut = stokSeviyesi(depo.veri, urun: kalem.urunId) + buSatisinCikisi
             let dusen = Birim.cevir(kalem.miktar, kalem.birim, urunBirimi) ?? kalem.miktar
             let eksi = mevcut - dusen < 0
             HStack(spacing: 6) {

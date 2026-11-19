@@ -11,6 +11,7 @@ struct KovanFormu: View {
     @State private var tip = "Langstroth"
     @State private var anaDurum = "yes"
     @State private var renk = "white"
+    @State private var isaret = ""
     @State private var guc = 3
     @State private var irk = ""
     @State private var kusak = ""
@@ -36,6 +37,12 @@ struct KovanFormu: View {
                     }
                     Picker("Tip", selection: $tip) { ForEach(tipListesi, id: \.self) { Text($0) } }
                     Picker("Ana arı", selection: $anaDurum) { ForEach(durumlar, id: \.0) { Text($0.1).tag($0.0) } }
+                    if KovanRenkAyari.durumlarAcik {
+                        Picker("Renk durumu", selection: $isaret) {
+                            Text("Yok").tag("")
+                            ForEach(KovanRenkAyari.durumlar) { r in Text(r.name).tag(r.id) }
+                        }
+                    }
                 }
                 if anaDurum != "empty" {
                     Section(header: Label("Ana arı", systemImage: "crown")) {
@@ -109,7 +116,7 @@ struct KovanFormu: View {
         yuklendi = true
         if let k = depo.kovan(kovanId) {
             num = k.num; tip = k.type ?? tip; anaDurum = k.queenStatus == "new" ? "bakire" : (k.queenStatus ?? "yes")
-            renk = k.queenColor ?? "white"; guc = Int(k.strength ?? "3") ?? 3; irk = k.race ?? ""; kusak = kusakDuzelt(k.generation)
+            renk = k.queenColor ?? "white"; isaret = k.mark ?? ""; guc = Int(k.strength ?? "3") ?? 3; irk = k.race ?? ""; kusak = kusakDuzelt(k.generation)
             yil = k.year ?? ""; cerceve = k.frames.map { String(Int($0)) } ?? ""; kat = k.katSayisi; not = k.notes ?? ""
         } else {
             let enBuyuk = depo.veri.kovanlar.map(\.numara).filter { $0 != Int.max }.max() ?? 0
@@ -128,6 +135,7 @@ struct KovanFormu: View {
             k.type = tip
             k.queenStatus = anaDurum
             k.queenColor = renk
+            k.mark = isaret.isEmpty ? nil : isaret
             k.strength = String(guc)
             k.race = irk
             k.generation = kusak

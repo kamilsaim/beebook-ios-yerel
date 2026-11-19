@@ -7,7 +7,7 @@ import Supabase
 /// 2 sn sonra web'deki gibi read-merge-write ile `user_data` satırına gönderilir.
 @Observable @MainActor
 final class VeriDeposu {
-    private(set) var durum = DepoDurumu()
+    private(set) var durum = DepoDurumu() { didSet { KovanRenkAyari.ayar = durum.ayarlar } }
     private(set) var esitleniyor = false
     private(set) var sonHata: String?
     /// Giriş yapılmamış (hesapsız) kullanım: gönderim yok.
@@ -36,6 +36,7 @@ final class VeriDeposu {
         } else if let d = Onbellek.oku() {
             durum = d
         }
+        KovanRenkAyari.ayar = durum.ayarlar
     }
 
     static var simdiMs: Int64 { Int64(Date().timeIntervalSince1970 * 1000) }

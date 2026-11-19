@@ -215,9 +215,12 @@ struct KovanSatiri: View {
     var body: some View {
         let sekil = RoundedRectangle(cornerRadius: Olcu.kartYaricap, style: .continuous)
         HStack(spacing: 6) {
-            Image(kovan.gorselAdi).resizable().scaledToFit()
-                .frame(width: 96, height: 108)
-                .grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.6 : 1)
+            VStack(spacing: 2) {
+                Image(kovan.gorselAdi).resizable().scaledToFit()
+                    .frame(width: 96, height: 108)
+                    .grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.6 : 1)
+                KovanRenkSeridi(kovan: kovan)
+            }
             VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .center) {
                     Text("Kovan \(kovan.num)").font(Yazi.nunito(21, .bold)).foregroundStyle(kovan.arisiz ? Color(white: 0.3) : Renk.orman).lineLimit(1)
@@ -347,6 +350,7 @@ struct KovanIzgaraHucresi: View {
         VStack(spacing: 3) {
             Image(kovan.gorselAdi).resizable().scaledToFit().frame(width: 76, height: 74)
                 .grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.6 : 1)
+                .overlay(alignment: .bottom) { KovanRenkSeridi(kovan: kovan) }
             HStack(spacing: 4) {
                 if kovan.anaNoktasiGoster { AnaNoktasi(renk: kovan.queenColor, boyut: 9) }
                 Text("Kovan \(kovan.num)").font(Yazi.nunito(15, .bold)).foregroundStyle(kovan.arisiz ? Color(white: 0.3) : Renk.orman).lineLimit(1).minimumScaleFactor(0.8)

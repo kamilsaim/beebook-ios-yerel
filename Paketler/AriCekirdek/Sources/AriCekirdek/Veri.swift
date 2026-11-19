@@ -138,4 +138,34 @@ public struct Ayarlar: Codable, Equatable, Sendable, HamKayitli {
     }
 
     public var stockTypesTanimli: Bool { ham["stockTypes"]?.diziDegeri != nil }
+
+    /// Kovan renk durumları (Android 3.0.1 ile aynı alanlar).
+    public var hiveMarksOn: Bool { get { bool("hiveMarksOn") ?? false } set { boolYaz("hiveMarksOn", newValue) } }
+    /// Tanımsızsa nil (varsayılan liste kullanılır).
+    public var hiveMarks: [RenkDurumu]? {
+        get {
+            ham["hiveMarks"]?.diziDegeri?.compactMap { $0.nesneDegeri }.map { k in
+                RenkDurumu(id: k["id"]?.metinDegeri ?? "", name: k["name"]?.metinDegeri ?? "",
+                           colors: k["colors"]?.diziDegeri?.compactMap { $0.metinDegeri } ?? [])
+            }
+        }
+        set {
+            if let n = newValue {
+                ham["hiveMarks"] = .dizi(n.map { .nesne(["id": .metin($0.id), "name": .metin($0.name), "colors": .dizi($0.colors.map { .metin($0) })]) })
+            } else { ham.removeValue(forKey: "hiveMarks") }
+        }
+    }
+    /// Kart ışıması: ana durumu (yes|bakire|no|meme|unknown) → palet id ya da #RRGGBB. Yalnız değiştirilenler.
+    public var glowColors: [String: String] {
+        get { (ham["glowColors"]?.nesneDegeri ?? [:]).compactMapValues { $0.metinDegeri } }
+        set { if newValue.isEmpty { ham.removeValue(forKey: "glowColors") } else { ham["glowColors"] = .nesne(newValue.mapValues { .metin($0) }) } }
+    }
+}
+
+/// Bir renk durumu: ad + 1–2 renk (palet id).
+public struct RenkDurumu: Equatable, Sendable, Identifiable {
+    public var id: String
+    public var name: String
+    public var colors: [String]
+    public init(id: String, name: String, colors: [String]) { self.id = id; self.name = name; self.colors = colors }
 }

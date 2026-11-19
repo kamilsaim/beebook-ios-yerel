@@ -180,6 +180,7 @@ struct KovanDetayi: View {
             kutu("hexagon", "Güç", guc.map { "\($0)/5 · \(gucAd)" } ?? "—")
             kutu("oval.portrait", "Yavru", yavru)
             kutu("eye", "Ana görüldü", son?.queenSeen.map { $0 ? "Evet" : "Hayır" } ?? "—")
+            RenkDurumuKutusu(kovan: k)
         }
         .frame(width: 140)
         .frame(maxHeight: .infinity, alignment: .top)

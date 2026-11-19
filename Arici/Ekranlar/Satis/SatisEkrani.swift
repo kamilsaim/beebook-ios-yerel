@@ -282,12 +282,15 @@ struct MusteriKartiGorunumu: View {
 
     @ViewBuilder
     private var rozet: some View {
+        // Ön sipariş teslim edilene dek alacak değil (kalanTutar 0): ödeme rozeti yerine ön sipariş.
+        if kart.onSiparis && ["pending", "partial"].contains(kart.odeme) { Rozet(metin: "Ön sipariş", tur: .uyari) } else {
         switch kart.odeme {
         case "hediye": Rozet(metin: "Hediye", tur: .bilgi)
         case "zekat": Rozet(metin: "Zekat", tur: .mor)
         case "partial": Rozet(metin: "\(tl(kart.kalanTutar)) kaldı", tur: .uyari)
         case "pending": Rozet(metin: "Bekliyor", tur: .kotu)
         default: if kart.onSiparis { Rozet(metin: "Ön sipariş", tur: .uyari) } else { Rozet(metin: "Ödendi", tur: .iyi) }
+        }
         }
     }
 }
