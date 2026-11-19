@@ -59,7 +59,6 @@ struct SatisKaydiSatiri: View {
 struct AylikSatisGrafigi: View {
     let aylik: [SatisOzeti.Ay]
     var yukseklik: CGFloat = 96
-    @State private var secim: String?
     @State private var acilan: KimlikKutusu?
     var body: some View {
         Chart(aylik) { a in
@@ -69,13 +68,20 @@ struct AylikSatisGrafigi: View {
         }
         .chartYAxis { AxisMarks(position: .leading) { _ in AxisValueLabel().font(.system(size: 8)) } }
         .chartXAxis { AxisMarks { _ in AxisValueLabel().font(.system(size: 8)) } }
-        .chartXSelection(value: $secim)
-        .frame(height: yukseklik)
-        .onChange(of: secim) { _, ad in
-            guard let ad, let a = aylik.first(where: { $0.ad == ad }) else { return }
-            acilan = KimlikKutusu(id: a.id)
-            secim = nil
+        // chartXSelection kaydırma görünümü içinde tek dokunuşta seçmiyor (basılı tutma ister) →
+        // dokunulan x'i ay adına çevirip doğrudan aç (Android AylikCubuklar tıklaması gibi).
+        .chartOverlay { vekil in
+            GeometryReader { geo in
+                Rectangle().fill(.clear).contentShape(Rectangle())
+                    .onTapGesture { nokta in
+                        guard let alan = vekil.plotFrame else { return }
+                        let x = nokta.x - geo[alan].origin.x
+                        guard let ad: String = vekil.value(atX: x), let a = aylik.first(where: { $0.ad == ad }) else { return }
+                        acilan = KimlikKutusu(id: a.id)
+                    }
+            }
         }
+        .frame(height: yukseklik)
         .sheet(item: $acilan) { AySatislariSayfasi(onek: $0.id) }
         .accessibilityHint("Bir aya dokun: o ayın satışları açılır")
     }
@@ -237,7 +243,7 @@ struct OdemeKayitlariSayfasi: View {
         NavigationStack {
             Form {
                 Section {
-                    SayfaKahramani(gorsel: "SimgeSatis", baslik: baslik, alt: zekat ? "Bu sezon verilen zekatlar" : "Bu sezon verilen hediyeler") {
+                    SayfaKahramani(gorsel: zekat ? "SimgeZekat" : "SimgeHediye", baslik: baslik, alt: zekat ? "Bu sezon verilen zekatlar" : "Bu sezon verilen hediyeler") {
                         HStack(spacing: 8) {
                             OzetKutucuk(simge: zekat ? "moon.stars" : "gift", etiket: "Kayıt", deger: "\(l.count)", renk: zekat ? Renk.bilgi : Renk.mor)
                             OzetKutucuk(simge: "person.2", etiket: "Müşteri", deger: "\(musteriSayisi)", renk: Renk.orman2)

@@ -46,11 +46,22 @@ struct AnaKabuk: View {
             switch k {
             case "satis": menu.git(.satis); menu.yeniSatisIstegi += 1
             case "kovan": menu.git(.kovanlar); menu.yeniKovanIstegi += 1
+            // Telefon bildirimine dokunuldu
+            case "b_anaari": menu.git(.anaAri)
+            case "b_satis": menu.git(.satis)
+            case "b_ana": menu.git(.anaSayfa)
             default: break
             }
             if k != nil { yasam.kisayol = nil }
         }
+        // Bildirim izni: açılışta değil, ilk tarihli kayıt (aktif ana arı serisi / ileri tarihli iş) olunca bir kez
+        .task(id: tarihliVar) {
+            guard tarihliVar, Hatirlatici.acik, !Hatirlatici.izinSoruldu, await Hatirlatici.izinDurumu() == .notDetermined else { return }
+            await Hatirlatici.izinIste()
+            await Hatirlatici.planla(depo.veri)
+        }
         .task {
+            await Hatirlatici.planla(depo.veri)
             yasam.surumKontrol()
             await yasam.guncellemeKontrol()
             try? await Task.sleep(for: .seconds(4))
@@ -59,6 +70,12 @@ struct AnaKabuk: View {
         .alert("BeeBook \(yasam.guncellendiSurum ?? "") sürümüne güncellendi", isPresented: Binding(get: { yasam.guncellendiSurum != nil }, set: { if !$0 { yasam.guncellendiSurum = nil } })) {
             Button("Harika") { yasam.guncellendiSurum = nil }
         } message: { Text("Yenilenen kovan kartları, raporlar ve sayfalar seni bekliyor. Verilerin olduğu gibi duruyor.") }
+    }
+
+    private var tarihliVar: Bool {
+        let b = String(ISO8601DateFormatter.string(from: Date(), timeZone: .current, formatOptions: [.withFullDate]).prefix(10))
+        return depo.veri.seriler.contains { ($0.status ?? "active") == "active" && !($0.transfer ?? "").isEmpty }
+            || depo.veri.isler.contains { !$0.done && ($0.dueDate ?? "") >= b }
     }
 
     private func rozetleriGuncelle() {

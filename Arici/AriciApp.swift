@@ -32,6 +32,7 @@ struct AriciApp: App {
                         let gorev = UIApplication.shared.beginBackgroundTask(withName: "eşitleme")
                         Task {
                             await depo.simdiGonder()
+                            await Hatirlatici.planla(depo.veri)
                             UIApplication.shared.endBackgroundTask(gorev)
                         }
                     case .active: Task { await depo.yukle() }

@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UserNotifications
 
 /// Uygulama yaşam döngüsü yardımcıları (Android UygulamaYasami ile aynı): ana ekran kısayolları,
 /// App Store'da yeni sürüm bandı, "güncellendi" notu ve uygulama içi puanlama zamanlaması.
@@ -68,6 +69,12 @@ final class UygulamaYasami {
 
 /// Ana ekran kısayolları (Info.plist UIApplicationShortcutItems): uygulama kapalıyken ve açıkken.
 final class UygulamaTemsilcisi: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // Telefon bildirimine dokunma → ilgili sekme (uygulama kapalıyken de)
+        UNUserNotificationCenter.current().delegate = BildirimTemsilcisi.paylasilan
+        return true
+    }
+
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession,
                      options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         if let k = options.shortcutItem { UygulamaYasami.paylasilan.kisayolIsle(k) }
