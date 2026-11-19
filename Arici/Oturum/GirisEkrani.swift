@@ -24,7 +24,7 @@ struct GirisEkrani: View {
                         .font(Yazi.logo(52))
                         .padding(.top, 14)
                         .accessibilityAddTraits(.isHeader)
-                    Text("Arıcının El Defteri")
+                    Text("Akıllı Arıcılık")
                         .font(Yazi.nunito(17, .semibold))
                         .foregroundStyle(Renk.acikBal)
                     Text("Kovanların, ana arıların, satış ve stoğun\nher yerde yanında.")
