@@ -86,23 +86,6 @@ struct SeciliPetek: View {
     }
 }
 
-/// Kanadı ayrı katmanda çırpan arı.
-struct UcanAriGorseli: View {
-    var cirpiyor: Bool
-    var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !cirpiyor)) { ctx in
-            let t = ctx.date.timeIntervalSinceReferenceDate
-            let faz = cirpiyor ? (sin(t * 2 * .pi * 8) + 1) / 2 : 1 // 8 Hz
-            ZStack {
-                Image("AriKanat").resizable().scaledToFit()
-                    .scaleEffect(x: 1, y: 0.35 + 0.65 * faz, anchor: UnitPoint(x: 0.52, y: 0.5))
-                    .rotationEffect(.degrees(cirpiyor ? -8 * (1 - faz) : 0), anchor: UnitPoint(x: 0.52, y: 0.5))
-                Image("AriGovde").resizable().scaledToFit()
-            }
-        }
-    }
-}
-
 struct AltCubuk: View {
     @Bindable var durum: MenuDurumu
     @Environment(\.accessibilityReduceMotion) private var hareketiAzalt
@@ -169,13 +152,13 @@ struct AltCubuk: View {
                 }
 
                 // Arı
-                UcanAriGorseli(cirpiyor: cirpiyor)
-                    .frame(width: 50, height: 44)
+                Vizilti(cirpiyor: cirpiyor)
+                    .frame(width: 40, height: 60)
                     .scaleEffect(x: solaBakiyor ? -1 : 1, y: 1)
                     .rotationEffect(.degrees(ucuyor ? (solaBakiyor ? -8 : 8) : 0))
                     .scaleEffect(ince ? 0.82 : 1)
                     .scaleEffect(x: 1, y: konuyor ? 0.94 : 1, anchor: .bottom)
-                    .offset(x: ariX - 22, y: (ince ? -32 : -38) + (ucuyor ? -14 : 0))
+                    .offset(x: ariX - 20, y: (ince ? -46 : -54) + (ucuyor ? -14 : 0))
                     .shadow(color: .black.opacity(0.4), radius: 3, y: 3)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)

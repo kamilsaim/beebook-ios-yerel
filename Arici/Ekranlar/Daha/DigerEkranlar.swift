@@ -773,6 +773,7 @@ struct AyarlarEkrani: View {
                 .sheet(isPresented: $renkler) { KovanRenkleriSayfasi() }
             }
             BildirimAyarlariBolumu()
+            ViziltiAyarlariBolumu()
             Section(header: Label("Arı ırkları", systemImage: "ladybug"), footer: Text("Silmek için sola kaydır.")) {
                 ForEach(depo.irklar, id: \.self) { t in Label(t, systemImage: "ladybug").foregroundStyle(Renk.metin) }
                     .onDelete { i in let l = depo.irklar; depo.ayarDegistir { a in a.beeRaces = l.enumerated().filter { !i.contains($0.offset) }.map(\.element) } }

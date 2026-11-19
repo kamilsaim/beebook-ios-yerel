@@ -48,7 +48,10 @@ struct KokGorunum: View {
 
     var body: some View {
         Group {
-            if Baslatma.ornekVeri {
+            // Karşılama: giriş ekranından (ve ana kabuktan) önce, bir kez
+            if KarsilamaDurumu.paylasilan.goster && (Baslatma.ornekVeri || oturum.durum != .yukleniyor) {
+                KarsilamaEkrani()
+            } else if Baslatma.ornekVeri {
                 AnaKabuk()
             } else {
                 switch oturum.durum {
