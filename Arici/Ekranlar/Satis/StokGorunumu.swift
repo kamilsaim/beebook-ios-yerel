@@ -11,6 +11,7 @@ struct StokGorunumu: View {
     @State private var giris = false
     @State private var zekat = false
     @State private var odemeListesi: KimlikKutusu?
+    @State private var urunStok: KimlikKutusu?
     @State private var rapor = false
     /// Stok hareketine dokununca açılan kayıt (satış / hasat / elle giriş-çıkış).
     @State private var hareketForm: HareketHedefi?
@@ -42,6 +43,7 @@ struct StokGorunumu: View {
         .sheet(isPresented: $giris) { StokGirisFormu() }
         .sheet(isPresented: $zekat) { ZekatSayfasi() }
         .sheet(item: $odemeListesi) { OdemeKayitlariSayfasi(tur: $0.id) }
+        .sheet(item: $urunStok) { UrunStokSayfasi(urunId: $0.id) }
         .sheet(isPresented: $rapor) { StokRaporuSayfasi() }
         .sheet(item: $hareketForm) { h in
             switch h {
@@ -72,7 +74,7 @@ struct StokGorunumu: View {
                 HStack(spacing: 10) {
                     // Pasif ürün: stoğu bitmişse gizlenir (Ayarlar'dan değil, ürün formundan yeniden aktif edilir).
                     ForEach(urunler.filter { $0.pasif != true || stokSeviyesi(depo.veri, urun: $0.v) != 0 }, id: \.v) { u in
-                        Button { urunForm = KimlikKutusu(id: u.v) } label: { urunKutusu(u, stokSeviyesi(depo.veri, urun: u.v)) }.buttonStyle(.plain)
+                        Button { urunStok = KimlikKutusu(id: u.v) } label: { urunKutusu(u, stokSeviyesi(depo.veri, urun: u.v)) }.buttonStyle(.plain)
                     }
                     Button { yeniUrun = true } label: {
                         VStack(spacing: 6) {
@@ -532,43 +534,3 @@ struct StokRaporuSayfasi: View {
     private func satir(_ a: String, _ b: String) -> some View { HStack { Text(a); Spacer(); Text(b).foregroundStyle(.secondary) } }
 }
 
-struct SatisRaporuSayfasi: View {
-    @Environment(VeriDeposu.self) private var depo
-    @Environment(\.dismiss) private var kapat
-    var body: some View {
-        let satislar = depo.sezonda(depo.veri.satislar)
-        let urunler = depo.urunler
-        let bekleyen = musteriKartlari(satislar).filter { $0.kalanTutar > 0 }
-        NavigationStack {
-            List {
-                Section {
-                    HStack { Text("Toplam gelir"); Spacer(); Text(tl(satislar.reduce(0) { $0 + ($1.total ?? 0) })).bold() }
-                    HStack { Text("Bekleyen"); Spacer(); Text(tl(bekleyenToplam(satislar: satislar))).foregroundStyle(Renk.kotu) }
-                }
-                Section("Ürünlere göre") {
-                    ForEach(satisRaporu(satislar), id: \.anahtar) { g in
-                        let ad = g.anahtar.hasPrefix("urun_") ? (urunler.first { $0.v == String(g.anahtar.dropFirst(5)) }?.temizAd ?? String(g.anahtar.dropFirst(5)))
-                            : ["tur_queen": "Ana Arı", "tur_bee": "Arı Satışı", "tur_milk": "Arı Sütü"][g.anahtar] ?? "Diğer"
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack { Text(ad).bold(); Spacer(); Text(tl(g.satisTl)) }
-                            Text("\(miktar(g.satis, g.unit ?? "")) satış · \(g.satisAdet) kayıt" + (g.hediye > 0 ? " · \(miktar(g.hediye, g.unit ?? "")) hediye" : "") + (g.zekat > 0 ? " · \(miktar(g.zekat, g.unit ?? "")) zekat" : ""))
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-                if !bekleyen.isEmpty {
-                    Section("Bekleyen ödemeler") {
-                        ForEach(bekleyen) { k in HStack { Text(k.musteri); Spacer(); Text(tl(k.kalanTutar)).foregroundStyle(Renk.kotu) } }
-                    }
-                }
-            }
-            .navigationTitle("Satış Raporu")
-            .formArkaplani()
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } }
-                ToolbarItem(placement: .topBarLeading) { RaporPaylasDugmesi() }
-            }
-        }
-    }
-}

@@ -166,7 +166,7 @@ struct KovanlarEkrani: View {
             } else if gorunum == .izgara {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
                     ForEach(k, id: \.id) { kv in
-                        NavigationLink(value: kv.id) { KovanIzgaraHucresi(kovan: kv) }.buttonStyle(.plain)
+                        NavigationLink(value: kv.id) { KovanIzgaraHucresi(kovan: kv) }.buttonStyle(.plain).contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                 }
             } else {
@@ -256,9 +256,10 @@ struct KovanSatiri: View {
         .padding(.top, kovan.starred ? 16 : 8).padding(.bottom, 8).padding(.leading, 4).padding(.trailing, 12)
         .background {
             Image("KartKovan").resizable().scaledToFill()
-                .grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.45 : 1)
+                .grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.45 : 1).allowsHitTesting(false)
         }
         .clipShape(sekil)
+        .contentShape(sekil)
         .overlay(alignment: .topLeading) { if kovan.starred { OneCikanSeridi() } }
         .kovanKartiStili(kovan, yaricap: Olcu.kartYaricap)
         .accessibilityElement(children: .combine)
@@ -366,7 +367,7 @@ struct KovanIzgaraHucresi: View {
         }
         .padding(.top, 8).padding(.bottom, 9).padding(.horizontal, 6)
         .frame(maxWidth: .infinity)
-        .background { Image("KartKovan").resizable().scaledToFill().grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.45 : 1) }
+        .background { Image("KartKovan").resizable().scaledToFill().grayscale(kovan.arisiz ? 1 : 0).opacity(kovan.arisiz ? 0.45 : 1).allowsHitTesting(false) }
         .clipShape(sekil)
         .overlay(alignment: .topTrailing) {
             Button { depo.yildizDegistir(kovan.id) } label: {
@@ -386,6 +387,8 @@ struct KovanIzgaraHucresi: View {
             }
         }
         .kovanKartiStili(kovan, yaricap: 18)
+        // Taşan (scaledToFill) arka plan komşu hücrelerin dokunuşunu çalmasın: dokunma alanı = hücre şekli.
+        .contentShape(sekil)
     }
 }
 

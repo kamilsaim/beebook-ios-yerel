@@ -64,14 +64,7 @@ struct RaporlarEkrani: View {
                             if satis.aylik.allSatisfy({ $0.tutar == 0 }) {
                                 Text("Bu dönemde satış yok").font(Yazi.minik).foregroundStyle(Renk.metin3).frame(maxWidth: .infinity, minHeight: 86)
                             } else {
-                                Chart(satis.aylik) { a in
-                                    BarMark(x: .value("Ay", a.ad), y: .value("₺", a.tutar))
-                                        .foregroundStyle(LinearGradient(colors: [Renk.acikBal, Renk.bal], startPoint: .top, endPoint: .bottom))
-                                        .cornerRadius(3)
-                                }
-                                .chartYAxis { AxisMarks(position: .leading) { _ in AxisValueLabel().font(.system(size: 8)) } }
-                                .chartXAxis { AxisMarks { _ in AxisValueLabel().font(.system(size: 8)) } }
-                                .frame(height: 96)
+                                AylikSatisGrafigi(aylik: satis.aylik, yukseklik: 96)
                             }
                         }
                         .icKutu()

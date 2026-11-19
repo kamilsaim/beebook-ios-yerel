@@ -39,14 +39,7 @@ struct OzetRaporKarti: View {
                         Text("Bu sezon satış yok").font(Yazi.minik).foregroundStyle(Renk.metin3)
                             .multilineTextAlignment(.center).frame(maxHeight: .infinity)
                     } else {
-                        Chart(satis.aylik) { a in
-                            BarMark(x: .value("Ay", a.ad), y: .value("₺", a.tutar))
-                                .foregroundStyle(LinearGradient(colors: [Renk.acikBal, Renk.bal], startPoint: .top, endPoint: .bottom))
-                                .cornerRadius(3)
-                        }
-                        .chartYAxis { AxisMarks(position: .leading) { _ in AxisValueLabel().font(.system(size: 8)) } }
-                        .chartXAxis { AxisMarks { _ in AxisValueLabel().font(.system(size: 8)) } }
-                        .frame(height: 78)
+                        AylikSatisGrafigi(aylik: satis.aylik, yukseklik: 78)
                     }
                 }
                 .frame(maxWidth: .infinity)

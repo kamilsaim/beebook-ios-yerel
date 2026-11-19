@@ -1,5 +1,25 @@
 import SwiftUI
+import UIKit
 import AriCekirdek
+
+/// Menülerde renkli simge: iOS menüleri SF Symbol'leri tek renk çizer, bu yüzden renk karesi görsel olarak üretilir.
+enum RenkGorseli {
+    static func gorsel(_ renkler: [Color], boyut: CGFloat = 18) -> Image {
+        let l = Array(renkler.prefix(2))
+        let n = CGFloat(max(1, l.count))
+        let r = UIGraphicsImageRenderer(size: CGSize(width: boyut * n + 3 * (n - 1), height: boyut))
+        let img = r.image { _ in
+            for (i, c) in l.enumerated() {
+                let kutu = CGRect(x: CGFloat(i) * (boyut + 3), y: 0, width: boyut, height: boyut).insetBy(dx: 0.5, dy: 0.5)
+                let yol = UIBezierPath(roundedRect: kutu, cornerRadius: boyut * 0.3)
+                UIColor(c).setFill(); yol.fill()
+                UIColor.black.withAlphaComponent(0.25).setStroke(); yol.lineWidth = 1; yol.stroke()
+            }
+        }
+        return Image(uiImage: img.withRenderingMode(.alwaysOriginal))
+    }
+    static func gorsel(idler: [String], boyut: CGFloat = 18) -> Image { gorsel(idler.map { RenkPaleti.renk($0) ?? .gray }, boyut: boyut) }
+}
 
 // Kovan renkleri (Android 3.0.1 ile aynı veri): kart ışıması renkleri + renk durumları (abinin şeması).
 
@@ -101,7 +121,7 @@ struct RenkDurumuKutusu: View {
             let d = KovanRenkAyari.durum(kovan)
             Menu {
                 ForEach(KovanRenkAyari.durumlar) { r in
-                    Button { sec(r.id) } label: { Label(r.name, systemImage: r.id == kovan.mark ? "checkmark" : "circle.fill") }
+                    Button { sec(r.id) } label: { Label { Text((r.id == kovan.mark ? "✓ " : "") + r.name) } icon: { RenkGorseli.gorsel(idler: r.colors) } }
                 }
                 Button("Yok", role: .destructive) { sec(nil) }
             } label: {
@@ -148,9 +168,9 @@ struct KovanRenkleriSayfasi: View {
                         let anahtar = e.0, ad = e.1
                         let ozel = depo.ayarlar.glowColors[anahtar]
                         Menu {
-                            Button("Varsayılan") { depo.ayarDegistir { $0.glowColors[anahtar] = nil } }
+                            Button { depo.ayarDegistir { $0.glowColors[anahtar] = nil } } label: { Label { Text((ozel == nil ? "✓ " : "") + "Varsayılan") } icon: { RenkGorseli.gorsel([isimaVarsayilan[anahtar] ?? Renk.bal]) } }
                             ForEach(RenkPaleti.liste) { p in
-                                Button { depo.ayarDegistir { $0.glowColors[anahtar] = p.id } } label: { Label(p.ad, systemImage: p.id == ozel ? "checkmark" : "circle.fill") }
+                                Button { depo.ayarDegistir { $0.glowColors[anahtar] = p.id } } label: { Label { Text((p.id == ozel ? "✓ " : "") + p.ad) } icon: { RenkGorseli.gorsel(idler: [p.id]) } }
                             }
                         } label: {
                             HStack {
@@ -266,44 +286,3 @@ private struct RenkDurumuFormu: View {
     }
 }
 
-// MARK: Stok › Hediye / Zekat kayıtları
-
-struct OdemeKayitlariSayfasi: View {
-    @Environment(VeriDeposu.self) private var depo
-    @Environment(\.dismiss) private var kapat
-    let tur: String
-    @State private var duzenle: KimlikKutusu?
-
-    var body: some View {
-        let l = depo.sezonda(depo.veri.satislar).filter { $0.payment == tur }.sorted { ($0.date ?? "") > ($1.date ?? "") }
-        NavigationStack {
-            Form {
-                if l.isEmpty {
-                    Text("Bu sezon \(tur == "zekat" ? "zekat" : "hediye") kaydı yok.").foregroundStyle(Renk.metin3)
-                } else {
-                    Section {
-                        ForEach(l, id: \.id) { s in
-                            Button { duzenle = KimlikKutusu(id: s.id) } label: {
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(s.customer.flatMap { $0.isEmpty ? nil : $0 } ?? "—").font(Yazi.govdeOrta).foregroundStyle(Renk.metin)
-                                        Text([s.date.map { kisaTarih($0) }, s.note.flatMap { $0.isEmpty ? nil : $0 }].compactMap { $0 }.joined(separator: " · "))
-                                            .font(Yazi.etiket).foregroundStyle(Renk.metin2)
-                                    }
-                                    Spacer()
-                                    Text(miktar(s.qty ?? 0, s.unit ?? "")).font(Yazi.kucukOrta).foregroundStyle(Renk.metin)
-                                    Image(systemName: "chevron.right").font(.system(size: 13)).foregroundStyle(Renk.metin3)
-                                }
-                            }
-                        }
-                    } footer: { Text("Dokun: düzenle (miktar, ürün, tarih). Değişiklik stoğa da yansır.") }
-                }
-            }
-            .navigationTitle(tur == "zekat" ? "Zekat kayıtları" : "Hediye kayıtları")
-            .navigationBarTitleDisplayMode(.inline)
-            .formArkaplani()
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } } }
-            .sheet(item: $duzenle) { SatisFormu(satisId: $0.id) }
-        }
-    }
-}

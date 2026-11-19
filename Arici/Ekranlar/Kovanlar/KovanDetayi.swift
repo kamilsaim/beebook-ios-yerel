@@ -78,12 +78,15 @@ struct KovanDetayi: View {
                     .background(Renk.bal.opacity(0.18), in: Capsule())
                     .overlay(Capsule().strokeBorder(Renk.bal))
                 }
-                Text("Kovan \(k.num)").font(Yazi.nunito(30, .bold)).foregroundStyle(Renk.krem)
+                Text("Kovan \(k.num)").font(Yazi.nunito(30, .heavy)).foregroundStyle(Renk.krem)
                     .shadow(color: .black.opacity(0.5), radius: 4, y: 2).lineLimit(1).minimumScaleFactor(0.7)
-                saglikRozeti(k)
-                if let t = k.type, !t.isEmpty { hap("square.stack.3d.up", t) }
-                let irk = [k.race, k.generation.map { kusakDuzelt($0) }].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
-                if !irk.isEmpty, !k.arisiz { hap("ladybug", irk) }
+                // Android ile aynı: sağlık rozeti + "Tip · N kat" + "Irk · Kuşak" tek akışta yan yana sarılır.
+                FlowLayout(aralik: 6) {
+                    saglikRozeti(k)
+                    if let t = k.type, !t.isEmpty { hap("square.stack.3d.up", k.katSayisi > 1 ? "\(t) · \(k.katSayisi) kat" : t) }
+                    let irk = [k.race, k.generation.map { kusakDuzelt($0) }].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+                    if !irk.isEmpty, !k.arisiz { hap("ladybug", irk) }
+                }
             }
             Spacer(minLength: 0)
         }
