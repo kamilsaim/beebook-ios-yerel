@@ -8,9 +8,11 @@ struct SeriDetayi: View {
     @Environment(\.dismiss) private var geri
     let seriId: String
     @State private var duzenle = false
-    @State private var secilenMeme: Meme?
-    @State private var kovanSecimi: MemeSecimi?
+    @State private var secilenMeme: MemeSecimi?
     @State private var liste = false
+    @State private var sayiAlani: SayiAlani?
+    @State private var siradakine = true
+    @State private var topluDurum: String?
 
     var body: some View {
         if let s = depo.veri.seriler.first(where: { $0.id == seriId }) {
@@ -46,15 +48,34 @@ struct SeriDetayi: View {
             .background(SayfaArkaplani(gorsel: "SayfaCicek", koyuluk: 1))
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $duzenle) { SeriFormu(seriId: s.id) }
-            .confirmationDialog(secilenMeme.map { "Meme \(etiket(s, $0))" } ?? "", isPresented: Binding(get: { secilenMeme != nil }, set: { if !$0 { secilenMeme = nil } }), titleVisibility: .visible) {
-                if let m = secilenMeme {
-                    Button("Kovana aktarıldı…") { kovanSecimi = MemeSecimi(meme: m); secilenMeme = nil }
-                    Button("Satıldı") { durumYaz(m, "satildi") }
-                    Button("Bekliyor") { durumYaz(m, "pending") }
-                    Button("Öldü / başarısız", role: .destructive) { durumYaz(m, "oldu") }
+            .sheet(item: $secilenMeme) { k in
+                let m = s.memeler.first { $0.id == k.id } ?? k.meme
+                MemeDurumPenceresi(
+                    baslik: "Meme \(etiket(s, m))",
+                    sira: (s.memeler.firstIndex { $0.id == m.id } ?? 0) + 1, toplam: s.memeler.count,
+                    durum: m.status ?? "pending", durumMetni: durumMetni(m), hedef: m.targetHive, siradakine: $siradakine
+                ) { d, kovan in durumYaz(m, d, kovan: kovan) }
+            }
+            .sheet(item: $sayiAlani) { a in
+                let g = s.grafted.map { Int($0) } ?? 0
+                let t = s.accepted.map { Int($0) } ?? 0
+                switch a {
+                case .asilanan:
+                    SayiPenceresi(baslik: "Aşılanan larva", ilk: s.grafted.map { Int($0) }, hizli: [10, 15, 20, 25, 30, 40, 60], aciklama: nil) { sayiYaz(a, $0) }
+                case .tutan:
+                    SayiPenceresi(baslik: "Tutan (meme)", ilk: s.accepted.map { Int($0) }, hizli: tutanOnerileri(g),
+                                  aciklama: g > 0 ? "Aşılanan \(g) · memeler bu sayıya göre listelenir" : "Memeler bu sayıya göre listelenir") { sayiYaz(a, $0) }
+                case .cikan:
+                    SayiPenceresi(baslik: "Çıkan ana", ilk: s.emerged.map { Int($0) }, hizli: cikanOnerileri(t),
+                                  aciklama: t > 0 ? "Tutan \(t) · çıkmayanlar listeden düşer" : nil) { sayiYaz(a, $0) }
                 }
             }
-            .sheet(item: $kovanSecimi) { k in let m = k.meme; KovanSecici(baslik: "Meme \(etiket(s, m))", secili: m.targetHive) { kovanId in durumYaz(m, "kovana_aktarildi", kovan: kovanId) } }
+            .confirmationDialog(topluDurum.map { "Bekleyen memelerin hepsi \"\($0 == "satildi" ? "Satıldı" : "Öldü")\" olsun mu?" } ?? "",
+                                isPresented: Binding(get: { topluDurum != nil }, set: { if !$0 { topluDurum = nil } }), titleVisibility: .visible) {
+                if let d = topluDurum {
+                    Button("Evet", role: d == "oldu" ? .destructive : nil) { topluYaz(d) }
+                }
+            }
         } else {
             BosDurum(simge: "crown", baslik: "Seri silindi").onAppear { geri() }
         }
@@ -117,25 +138,31 @@ struct SeriDetayi: View {
         let m = s.memeler
         return Kart(dolgu: 12) {
             BolumBasligi(simge: "chart.bar.fill", baslik: "Üretim", kucuk: true)
-            ozetSatir("Aşılanan", s.grafted.map { Int($0) } ?? 0, Renk.metin)
-            ozetSatir("Tutan", s.accepted.map { Int($0) } ?? m.count, Renk.orman2)
+            ozetSatir("Aşılanan", s.grafted.map { Int($0) } ?? 0, Renk.metin, alan: .asilanan)
+            ozetSatir("Tutan", s.accepted.map { Int($0) } ?? m.count, Renk.orman2, alan: .tutan)
+            ozetSatir("Çıkan", s.emerged.map { Int($0) } ?? 0, Renk.bal, alan: .cikan)
             ozetSatir("Kovanda", m.filter { $0.status == "kovana_aktarildi" }.count, Renk.iyi)
             ozetSatir("Satıldı", m.filter { $0.status == "satildi" }.count, Renk.bilgi)
             ozetSatir("Bekleyen", m.filter { ($0.status ?? "pending") == "pending" }.count, Renk.uyari)
         }
-        .frame(width: 150)
+        .frame(width: 162)
     }
 
-    private func ozetSatir(_ ad: String, _ sayi: Int, _ renk: Color) -> some View {
-        HStack(spacing: 6) {
+    /// `alan` verilirse satır dokunulabilir: sayıyı hızlıca düzelt (memeler tutan/çıkana göre boyutlanır).
+    private func ozetSatir(_ ad: String, _ sayi: Int, _ renk: Color, alan: SayiAlani? = nil) -> some View {
+        let icerik = HStack(spacing: 6) {
             Circle().fill(renk).frame(width: 8, height: 8)
-            Text(ad).font(Yazi.kucuk)
-            Spacer()
-            Text("\(sayi)").font(Yazi.nunito(18, .bold)).foregroundStyle(renk)
+            Text(ad).font(Yazi.kucuk).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer(minLength: 2)
+            Text(alan != nil && sayi == 0 ? "—" : "\(sayi)").font(Yazi.nunito(18, .bold)).foregroundStyle(renk)
+            if alan != nil { Image(systemName: "pencil").font(.system(size: 10, weight: .bold)).foregroundStyle(renk.opacity(0.7)) }
         }
         .padding(.horizontal, 8).padding(.vertical, 3)
-        .background(renk.opacity(0.08), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(renk.opacity(0.2)))
+        .background(renk.opacity(alan != nil ? 0.14 : 0.08), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(renk.opacity(alan != nil ? 0.45 : 0.2)))
+        return Group {
+            if let alan { Button { sayiAlani = alan } label: { icerik }.buttonStyle(.plain) } else { icerik }
+        }
     }
 
     private func memeler(_ s: AnaSeri) -> some View {
@@ -153,11 +180,16 @@ struct SeriDetayi: View {
                 .pickerStyle(.segmented).frame(width: 84)
             }
             if m.isEmpty {
-                Text("Tutan (meme) sayısını girince memeler burada listelenir. Kalem simgesiyle seriyi düzenle.")
+                Text("Tutan (meme) sayısını girince memeler burada listelenir.")
                     .font(Yazi.kucuk).foregroundStyle(Renk.metin3)
+                Button { sayiAlani = .tutan } label: {
+                    Text("Tutan sayısını gir").font(Yazi.govdeOrta).foregroundStyle(Renk.acikBal)
+                        .frame(maxWidth: .infinity, minHeight: 48).background(Renk.orman2, in: Capsule())
+                }
+                .buttonStyle(.plain)
             } else if liste {
                 ForEach(m, id: \.id) { me in
-                    Button { secilenMeme = me } label: {
+                    Button { secilenMeme = MemeSecimi(meme: me) } label: {
                         HStack {
                             durumSimgesi(me.status).frame(width: 22)
                             Text(etiket(s, me)).font(Yazi.kucukOrta)
@@ -171,7 +203,7 @@ struct SeriDetayi: View {
             } else {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 5), spacing: 6) {
                     ForEach(m, id: \.id) { me in
-                        Button { secilenMeme = me } label: { memeKutusu(s, me) }.buttonStyle(.plain)
+                        Button { secilenMeme = MemeSecimi(meme: me) } label: { memeKutusu(s, me) }.buttonStyle(.plain)
                     }
                 }
             }
@@ -183,7 +215,17 @@ struct SeriDetayi: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.top, 4)
-            Text("Memeye dokun: durumunu değiştir").font(Yazi.minik).foregroundStyle(Renk.metin3).frame(maxWidth: .infinity)
+            let bekleyen = m.filter { ($0.status ?? "pending") == "pending" }.count
+            if bekleyen > 1 {
+                HStack(spacing: 6) {
+                    Text("Bekleyen \(bekleyen) memenin hepsi:").font(Yazi.etiket).foregroundStyle(Renk.metin2)
+                    Spacer(minLength: 2)
+                    topluDugme("cart.fill", "Satıldı", Renk.bilgi) { topluDurum = "satildi" }
+                    topluDugme("xmark", "Öldü", Renk.kotu) { topluDurum = "oldu" }
+                }
+                .padding(.top, 6)
+            }
+            Text("Memeye dokun: durumunu seç, sıradaki kendiliğinden açılır").font(Yazi.minik).foregroundStyle(Renk.metin3).frame(maxWidth: .infinity)
         }
     }
 
@@ -199,6 +241,15 @@ struct SeriDetayi: View {
         .background(renk.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(renk.opacity(0.45)))
         .accessibilityElement(children: .combine)
+    }
+
+    private func topluDugme(_ simge: String, _ ad: String, _ renk: Color, _ f: @escaping () -> Void) -> some View {
+        Button(action: f) {
+            Label(ad, systemImage: simge).font(Yazi.kucukOrta).foregroundStyle(renk)
+                .padding(.horizontal, 12).padding(.vertical, 7)
+                .background(renk.opacity(0.13), in: Capsule()).overlay(Capsule().strokeBorder(renk.opacity(0.5)))
+        }
+        .buttonStyle(.plain)
     }
 
     private func lejant(_ simge: String, _ renk: Color, _ ad: String, _ sayi: Int) -> some View {
@@ -261,7 +312,178 @@ struct SeriDetayi: View {
             l[i].sold = Double(mm.filter { $0.status == "satildi" }.count)
             v.seriler = l
         }
-        secilenMeme = nil
+        // "Sıradakine geç" açıksa bir sonraki meme açılır
+        let liste = depo.veri.seriler.first { $0.id == seriId }?.memeler ?? []
+        if siradakine, let j = liste.firstIndex(where: { $0.id == m.id }), j + 1 < liste.count {
+            secilenMeme = MemeSecimi(meme: liste[j + 1])
+        } else {
+            secilenMeme = nil
+        }
+    }
+
+    /// Sonuç sayısını yaz; tutan/çıkan değişince meme listesi de boyutlanır.
+    private func sayiYaz(_ alan: SayiAlani, _ n: Int?) {
+        depo.degistir { v in
+            var l = v.seriler
+            guard let i = l.firstIndex(where: { $0.id == seriId }) else { return }
+            var x = l[i]
+            switch alan {
+            case .asilanan: x.grafted = n.map { Double($0) }
+            case .tutan: x.accepted = n.map { Double($0) }
+            case .cikan: x.emerged = n.map { Double($0) }
+            }
+            if alan != .asilanan {
+                let c = x.emerged.map { Int($0) }
+                x.memeler = memeleriBoyutla(x.memeler, tutan: x.accepted.map { Int($0) } ?? 0, cikan: (c ?? 0) > 0 ? c : nil)
+            }
+            x.sold = Double(x.memeler.filter { $0.status == "satildi" }.count)
+            l[i] = x
+            v.seriler = l
+        }
+    }
+
+    private func topluYaz(_ d: String) {
+        depo.degistir { v in
+            var l = v.seriler
+            guard let i = l.firstIndex(where: { $0.id == seriId }) else { return }
+            var mm = l[i].memeler
+            for j in mm.indices where (mm[j].status ?? "pending") == "pending" { mm[j].status = d; mm[j].targetHive = "" }
+            l[i].memeler = mm
+            l[i].sold = Double(mm.filter { $0.status == "satildi" }.count)
+            v.seriler = l
+        }
+        topluDurum = nil
+    }
+}
+
+enum SayiAlani: String, Identifiable {
+    case asilanan, tutan, cikan
+    var id: String { rawValue }
+}
+
+/// Ayrıntıdan tek sayıyı (aşılanan/tutan/çıkan) hızlıca düzeltme penceresi.
+struct SayiPenceresi: View {
+    @Environment(\.dismiss) private var kapat
+    let baslik: String
+    let ilk: Int?
+    let hizli: [Int]
+    let aciklama: String?
+    let kaydet: (Int?) -> Void
+    @State private var deger = ""
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(baslik).font(Yazi.kartBaslik).foregroundStyle(Renk.metin)
+            if let aciklama { Text(aciklama).font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
+            SayiGirisi(etiket: "Sayı", deger: $deger, hizli: hizli)
+            HStack(spacing: 10) {
+                Button { kapat() } label: {
+                    Text("Vazgeç").font(Yazi.govdeOrta).foregroundStyle(Renk.metin).frame(maxWidth: .infinity, minHeight: 48).background(Renk.krem2, in: Capsule())
+                }
+                Button { kaydet(Int(deger)); kapat() } label: {
+                    Text("Kaydet").font(Yazi.govdeOrta).foregroundStyle(Renk.acikBal).frame(maxWidth: .infinity, minHeight: 48).background(Renk.orman2, in: Capsule())
+                }
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 4)
+        }
+        .padding(20)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(Renk.kart)
+        .presentationDetents([.height(330)])
+        .presentationDragIndicator(.visible)
+        .onAppear { deger = ilk.flatMap { $0 > 0 ? String($0) : nil } ?? "" }
+    }
+}
+
+/// Meme durumu: renkli büyük düğmeler; kovana aktarırken kovan listesi aynı pencerede açılır. Seçince (isteğe bağlı) sıradaki meme.
+struct MemeDurumPenceresi: View {
+    @Environment(VeriDeposu.self) private var depo
+    let baslik: String
+    let sira: Int
+    let toplam: Int
+    let durum: String
+    let durumMetni: String
+    let hedef: String?
+    @Binding var siradakine: Bool
+    let sec: (String, String?) -> Void
+    @State private var kovanListesi = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(baslik).font(Yazi.kartBaslik).foregroundStyle(Renk.metin)
+                Spacer()
+                Text("\(sira) / \(toplam)").font(Yazi.kucuk).foregroundStyle(Renk.metin3)
+            }
+            if kovanListesi {
+                Button { kovanListesi = false } label: { Label("Geri", systemImage: "chevron.left").font(Yazi.kucukOrta).foregroundStyle(Renk.orman2) }.buttonStyle(.plain)
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(kovanlar, id: \.id) { k in
+                            Button { sec("kovana_aktarildi", k.id) } label: {
+                                HStack(spacing: 10) {
+                                    Image(k.gorselAdi).resizable().scaledToFit().frame(width: 34, height: 34)
+                                    Text("Kovan \(k.num)").font(Yazi.govdeOrta).foregroundStyle(Renk.metin)
+                                    Text(k.anaDurumMetni).font(Yazi.kucuk).foregroundStyle(k.sorunlu ? Renk.kotu : Renk.metin2)
+                                    Spacer()
+                                    if k.id == hedef { Image(systemName: "checkmark").foregroundStyle(Renk.orman2) }
+                                }
+                                .padding(.vertical, 7).contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            Divider()
+                        }
+                    }
+                }
+            } else {
+                Text("Şu an: \(durumMetni)").font(Yazi.kucuk).foregroundStyle(renk(durum))
+                secenek("crown.fill", "Kovana aktarıldı…", "kovana_aktarildi") { kovanListesi = true }
+                secenek("cart.fill", "Satıldı", "satildi") { sec("satildi", nil) }
+                secenek("xmark", "Öldü / başarısız", "oldu") { sec("oldu", nil) }
+                secenek("hourglass", "Bekliyor", "pending") { sec("pending", nil) }
+                Button { siradakine.toggle() } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: siradakine ? "checkmark.circle.fill" : "circle").foregroundStyle(siradakine ? Renk.orman2 : Renk.metin3)
+                        Text("Seçince sıradaki memeye geç").font(Yazi.kucuk).foregroundStyle(Renk.metin2)
+                    }
+                }
+                .buttonStyle(.plain).padding(.top, 4)
+            }
+        }
+        .padding(20)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(Renk.kart)
+        .presentationDetents(kovanListesi ? [.large] : [.height(440)])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var kovanlar: [Kovan] {
+        depo.veri.kovanlar.filter { !$0.arisiz }.sorted {
+            let o1 = $0.sorunlu ? 0 : ["bakire", "new", "meme"].contains($0.queenStatus ?? "") ? 1 : 2
+            let o2 = $1.sorunlu ? 0 : ["bakire", "new", "meme"].contains($1.queenStatus ?? "") ? 1 : 2
+            return (o1, $0.numara) < (o2, $1.numara)
+        }
+    }
+
+    private func renk(_ d: String) -> Color {
+        switch d { case "kovana_aktarildi": return Renk.iyi; case "satildi": return Renk.bilgi; case "oldu": return Renk.kotu; default: return Renk.uyari }
+    }
+
+    private func secenek(_ simge: String, _ ad: String, _ d: String, _ f: @escaping () -> Void) -> some View {
+        let r = renk(d)
+        let secili = durum == d
+        return Button(action: f) {
+            HStack(spacing: 12) {
+                Image(systemName: simge).font(.system(size: 18, weight: .semibold)).foregroundStyle(r).frame(width: 24)
+                Text(ad).font(Yazi.govdeOrta).foregroundStyle(Renk.metin)
+                Spacer()
+            }
+            .padding(.horizontal, 14).frame(minHeight: 52)
+            .background(r.opacity(secili ? 0.28 : 0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(r.opacity(secili ? 0.9 : 0.4), lineWidth: secili ? 2 : 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 

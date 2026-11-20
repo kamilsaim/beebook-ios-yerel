@@ -63,3 +63,44 @@ struct CipSecici<T: Hashable>: View {
         .padding(.vertical, 4)
     }
 }
+
+/// Sayı girişi (Android `FormSayi`): − [kutu] + ve altında tek dokunuşluk hazır değerler
+/// (ör. 20 larva için 20 kez + yerine bir dokunuş). Kutuya klavyeyle de yazılır; boş = girilmedi.
+struct SayiGirisi: View {
+    let etiket: String
+    @Binding var deger: String
+    var hizli: [Int] = []
+    var alt: String? = nil
+    var body: some View {
+        let n = Int(deger) ?? 0
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(etiket).font(Yazi.govde).foregroundStyle(Renk.metin)
+                    if let alt { Text(alt).font(Yazi.minik).foregroundStyle(Renk.metin3) }
+                }
+                Spacer(minLength: 4)
+                adimDugmesi("minus", etkin: n > 0) { deger = n - 1 > 0 ? String(n - 1) : "" }
+                TextField("—", text: Binding(get: { deger }, set: { yeni in
+                    deger = String(String(yeni.filter(\.isNumber).prefix(4)).drop(while: { $0 == "0" }))
+                }))
+                .keyboardType(.numberPad).multilineTextAlignment(.center)
+                .font(Yazi.nunito(21, .bold)).foregroundStyle(Renk.orman).frame(width: 64)
+                adimDugmesi("plus", etkin: n < 9999) { deger = String(n + 1) }
+            }
+            if !hizli.isEmpty {
+                CipSecici(baslik: nil, secenekler: hizli.map { ($0, "\($0)") }, secili: n) { deger = String($0) }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+    private func adimDugmesi(_ simge: String, etkin: Bool, _ f: @escaping () -> Void) -> some View {
+        Button(action: f) {
+            Image(systemName: simge).font(.system(size: 17, weight: .bold))
+                .foregroundStyle(etkin ? Renk.orman : Renk.metin3)
+                .frame(width: 40, height: 40)
+                .background(Renk.krem2.opacity(etkin ? 0.8 : 0.35), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain).disabled(!etkin)
+    }
+}

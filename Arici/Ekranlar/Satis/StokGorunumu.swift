@@ -370,7 +370,8 @@ enum HareketHedefi: Identifiable {
     }
 }
 
-/// Elle stok girişi; `kayitId` verilirse o giriş/çıkış kaydını düzenler ya da siler.
+/// Stok girişi (Android ile aynı): ürün kutucukları, büyük miktar + hazır değerler, önce/sonra önizlemesi, altta büyük Kaydet.
+/// `kayitId` verilirse o giriş/çıkış kaydını düzenler ya da siler.
 struct StokGirisFormu: View {
     @Environment(VeriDeposu.self) private var depo
     @Environment(\.dismiss) private var kapat
@@ -386,20 +387,80 @@ struct StokGirisFormu: View {
 
     var body: some View {
         let urunler = depo.urunler
-        let birim = urunler.first { $0.v == urunId }?.unit ?? (eski?.unit ?? "")
+        let urun = urunler.first { $0.v == urunId }
+        let birim = urun?.unit ?? (eski?.unit ?? "")
+        let b = Birim(rawValue: birim)
+        let cikis = eski?.action == "out"
+        let adim: Double = (b == .gr || b == .ml) ? 50 : 1
+        let hazir: [Double] = (b == .gr || b == .ml) ? [100, 250, 500, 1000, 2000] : b == .adet ? [1, 5, 10, 20, 50] : [1, 5, 10, 25, 50, 100]
+        let mevcut = urunId.isEmpty ? 0 : stokSeviyesi(depo.veri, urun: urunId)
+        let eskiEtki: Double = (eski != nil && eski?.product == urunId) ? (cikis ? -(eski?.amount ?? 0) : (eski?.amount ?? 0)) : 0
+        let sonra = mevcut - eskiEtki + (cikis ? -miktarDeger : miktarDeger)
         NavigationStack {
             Form {
-                Picker("Ürün", selection: $urunId) { ForEach(urunler.filter { $0.pasif != true || $0.v == urunId }, id: \.v) { Text($0.temizAd).tag($0.v) } }
-                HStack { TextField("Miktar", value: $miktarDeger, format: .number).keyboardType(.decimalPad); Text(birim).foregroundStyle(.secondary) }
-                DatePicker("Tarih", selection: $tarih, displayedComponents: .date)
-                HStack { Text("Birim fiyat"); TextField("₺", value: $fiyat, format: .number).keyboardType(.decimalPad).multilineTextAlignment(.trailing) }
-                TextField("Not (ör. Yaz hasadı)", text: $not)
+                Section {
+                    HStack(spacing: 12) {
+                        UrunGorseli(urun: urun, boyut: 72, yaricap: 16).padding(.leading, 14).padding(.top, 6)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(urun?.temizAd ?? "Ürün seç").font(Yazi.nunito(20, .bold)).foregroundStyle(Renk.orman).lineLimit(1)
+                            HStack(spacing: 6) {
+                                Text(miktar(mevcut, birim)).font(Yazi.nunito(15, .bold)).foregroundStyle(Renk.metin2)
+                                if miktarDeger > 0 {
+                                    Image(systemName: "arrow.right").font(.system(size: 13, weight: .bold)).foregroundStyle(cikis ? Renk.kotu : Renk.iyi)
+                                    Text(miktar(sonra, birim)).font(Yazi.nunito(19, .heavy)).foregroundStyle(cikis ? Renk.kotu : Renk.iyi)
+                                }
+                            }
+                            HStack(spacing: 5) {
+                                if miktarDeger > 0 { Rozet(metin: (cikis ? "−" : "+") + miktar(miktarDeger, birim), tur: cikis ? .kotu : .iyi) }
+                                if miktarDeger > 0 && fiyat > 0 { Rozet(metin: tl(miktarDeger * fiyat), simge: "turkishlirasign.circle", arkaRenk: Renk.bal.opacity(0.2)) }
+                            }
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 18)
+                    .dogaZemini()
+                }
+                .listeBasligi()
+                Section(header: Label("Ürün", systemImage: "archivebox")) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 7), count: 3), spacing: 7) {
+                        ForEach(urunler.filter { $0.pasif != true || $0.v == urunId }, id: \.v) { u in
+                            urunKutusu(u, secili: urunId == u.v, kilitli: cikis)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                Section(header: Label("Miktar", systemImage: "plus")) {
+                    HStack(spacing: 10) {
+                        yuvarlakDugme("minus") { miktarDeger = max(0, miktarDeger - adim) }
+                        HStack {
+                            TextField("0", value: $miktarDeger, format: .number).keyboardType(.decimalPad).font(Yazi.nunito(20, .bold))
+                            Text(birim).font(Yazi.nunito(16, .bold)).foregroundStyle(Renk.bal)
+                        }
+                        .padding(.horizontal, 14).frame(height: 56)
+                        .background(Renk.bal.opacity(0.1), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Renk.bal.opacity(0.4)))
+                        yuvarlakDugme("plus") { miktarDeger += adim }
+                    }
+                    CipSecici(baslik: nil, secenekler: hazir.map { ($0, miktar($0, birim)) }, secili: hazir.first { $0 == miktarDeger }) { miktarDeger = $0 }
+                }
+                Section(header: Label("Ayrıntı", systemImage: "doc.text")) {
+                    DatePicker("Tarih", selection: $tarih, displayedComponents: .date)
+                    CipSecici(baslik: nil, secenekler: [(0, "Bugün"), (1, "Dün"), (2, "2 gün önce")],
+                              secili: (0...2).first { Calendar.current.isDate(tarih, inSameDayAs: Calendar.current.date(byAdding: .day, value: -$0, to: Date()) ?? Date()) }) {
+                        tarih = Calendar.current.date(byAdding: .day, value: -$0, to: Date()) ?? Date()
+                    }
+                    HStack { Text("Birim fiyat"); TextField("₺", value: $fiyat, format: .number).keyboardType(.decimalPad).multilineTextAlignment(.trailing) }
+                    TextField("Not (ör. Yaz hasadı)", text: $not)
+                    if !cikis {
+                        CipSecici(baslik: nil, secenekler: ["Hasat", "Yaz hasadı", "Satın alma", "Başlangıç stoğu"].map { ($0, $0) }, secili: not.isEmpty ? nil : not) { not = not == $0 ? "" : $0 }
+                    }
+                }
                 if eski != nil {
-                    Section { Button(eski?.action == "out" ? "Çıkışı sil" : "Girişi sil", role: .destructive) { silOnay = true } }
+                    Section { Button(cikis ? "Çıkışı sil" : "Girişi sil", role: .destructive) { silOnay = true } }
                 }
             }
-            .navigationTitle(eski == nil ? "Stok Girişi" : (eski?.action == "out" ? "Stok Çıkışı" : "Stok Girişini Düzenle"))
-            .confirmationDialog(eski?.action == "out" ? "Stok çıkışı silinsin mi?" : "Stok girişi silinsin mi?", isPresented: $silOnay, titleVisibility: .visible) {
+            .navigationTitle(eski == nil ? "Stok Girişi" : (cikis ? "Stok Çıkışı" : "Stok Girişini Düzenle"))
+            .confirmationDialog(cikis ? "Stok çıkışı silinsin mi?" : "Stok girişi silinsin mi?", isPresented: $silOnay, titleVisibility: .visible) {
                 Button("Sil", role: .destructive) {
                     if let id = kayitId { depo.degistir { v in v.stokKayitlari = v.stokKayitlari.filter { $0.id != id } } }
                     kapat()
@@ -410,29 +471,69 @@ struct StokGirisFormu: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Kaydet") {
-                        let onceki = eski
-                        depo.degistir { v in
-                            var k = onceki ?? StokKaydi(["id": .metin(yeniKimlik())])
-                            k.product = urunId; k.action = onceki?.action ?? "in"; k.amount = miktarDeger; k.unit = birim; k.date = bugunISO(tarih); k.note = not
-                            if onceki == nil { v.stokKayitlari = v.stokKayitlari + [k] }
-                            else { v.stokKayitlari = v.stokKayitlari.map { $0.id == k.id ? k : $0 } }
-                        }
-                        if fiyat > 0 { depo.ayarDegistir { a in var p = a.stockPrices; p[urunId] = fiyat; a.stockPrices = p } }
-                        kapat()
-                    }
-                    .disabled(urunId.isEmpty || miktarDeger <= 0)
+                    Button("Kaydet") { kaydet(birim: birim) }.disabled(urunId.isEmpty || miktarDeger <= 0)
                 }
+            }
+            .safeAreaInset(edge: .bottom) {
+                BuyukKaydetCubugu(etkin: !urunId.isEmpty && miktarDeger > 0, ipucu: urunId.isEmpty ? "Önce ürün seç" : "Önce miktar gir") { kaydet(birim: birim) }
             }
             .onAppear {
                 if let e = eski {
                     urunId = e.product ?? ""; miktarDeger = e.amount ?? 0; tarih = isoTarih(e.date) ?? Date(); not = e.note ?? ""
                 }
-                if urunId.isEmpty { urunId = urunler.first?.v ?? "" }
+                if urunId.isEmpty { urunId = urunler.first { $0.pasif != true }?.v ?? urunler.first?.v ?? "" }
                 fiyat = depo.ayarlar.stockPrices[urunId] ?? 0
             }
         }
-        .presentationDetents([.medium, .large])
+    }
+
+    private func kaydet(birim: String) {
+        guard !urunId.isEmpty, miktarDeger > 0 else { return }
+        let onceki = eski
+        let id = urunId, m = miktarDeger, t = bugunISO(tarih), n = not
+        depo.degistir { v in
+            var k = onceki ?? StokKaydi(["id": .metin(yeniKimlik())])
+            k.product = id; k.action = onceki?.action ?? "in"; k.amount = m; k.unit = birim; k.date = t; k.note = n
+            if onceki == nil { v.stokKayitlari = v.stokKayitlari + [k] }
+            else { v.stokKayitlari = v.stokKayitlari.map { $0.id == k.id ? k : $0 } }
+        }
+        if fiyat > 0 { depo.ayarDegistir { a in var p = a.stockPrices; p[id] = fiyat; a.stockPrices = p } }
+        kapat()
+    }
+
+    private func urunKutusu(_ u: UrunTanimi, secili: Bool, kilitli: Bool) -> some View {
+        let stok = stokSeviyesi(depo.veri, urun: u.v)
+        let sekil = RoundedRectangle(cornerRadius: 14, style: .continuous)
+        return Button {
+            if urunId != u.v { urunId = u.v; fiyat = depo.ayarlar.stockPrices[u.v] ?? 0; miktarDeger = 0 }
+        } label: {
+            VStack(spacing: 2) {
+                UrunGorseli(urun: u, boyut: 48, yaricap: 12)
+                Text(u.temizAd).font(Yazi.nunito(12, .bold)).lineLimit(1).minimumScaleFactor(0.8)
+                Text(miktar(stok, u.unit)).font(Yazi.nunito(10)).foregroundStyle(stok <= 0 ? Renk.metin3 : Renk.metin2).lineLimit(1)
+            }
+            .padding(.top, 8).padding(.bottom, 7).padding(.horizontal, 4).frame(maxWidth: .infinity)
+            .background(secili ? AnyShapeStyle(LinearGradient(colors: [Color(red: 1, green: 0.96, blue: 0.84), Color(red: 1, green: 0.9, blue: 0.66)], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(Renk.kart), in: sekil)
+            .overlay(sekil.strokeBorder(secili ? Renk.bal : Renk.krem2, lineWidth: secili ? 2 : 1))
+            .overlay(alignment: .topTrailing) {
+                if secili {
+                    Image(systemName: "checkmark").font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
+                        .frame(width: 18, height: 18).background(Renk.orman2, in: Circle()).padding(4)
+                }
+            }
+            .foregroundStyle(Renk.metin)
+        }
+        .buttonStyle(.plain)
+        .disabled(kilitli && !secili)
+    }
+
+    private func yuvarlakDugme(_ simge: String, _ f: @escaping () -> Void) -> some View {
+        Button(action: f) {
+            Image(systemName: simge).font(.system(size: 19, weight: .bold)).foregroundStyle(.white)
+                .frame(width: 48, height: 48)
+                .background(LinearGradient(colors: [Renk.orman2, Renk.orman], startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -499,28 +600,49 @@ struct ZekatSayfasi: View {
     }
 }
 
+/// Stok raporu (Android ile aynı): üstte değer/satış özeti; ürün başına giriş nereye gitti
+/// (satış · hediye · zekat · rezerve · elde) çubuğu. Karta dokununca ürünün stok sayfası.
 struct StokRaporuSayfasi: View {
     @Environment(VeriDeposu.self) private var depo
     @Environment(\.dismiss) private var kapat
+    @State private var acikUrun: KimlikKutusu?
+    private let renkSatis = Renk.bilgi
+    private let renkHediye = Renk.mor
+    private let renkZekat = Color(red: 0.18, green: 0.55, blue: 0.55)
+    private let renkRezerve = Renk.uyari
+    private let renkElde = Renk.iyi
+
     var body: some View {
         let urunler = depo.urunler
+        let satirlar = stokRaporu(depo.veri, urunler: urunler)
+        let deger = satirlar.reduce(0.0) { $0 + max(0, $1.mevcut) * (depo.ayarlar.stockPrices[$1.urun] ?? 0) }
+        let ciro = satirlar.reduce(0.0) { $0 + $1.satisTutar }
         NavigationStack {
-            List {
-                ForEach(stokRaporu(depo.veri, urunler: urunler), id: \.urun) { r in
-                    let u = urunler.first { $0.v == r.urun }
-                    let b = u?.unit ?? ""
-                    Section {
-                        satir("Toplam giriş", miktar(r.giris, b))
-                        let rz = rezerveMiktar(depo.veri, urun: r.urun, urunBirimi: Birim(rawValue: b))
-                        satir("Satış", "\(miktar(r.satisMiktar, b)) · \(tl(r.satisTutar))")
-                        if r.hediye > 0 { satir("Hediye", miktar(r.hediye, b)) }
-                        if r.zekat > 0 { satir("Zekat", miktar(r.zekat, b)) }
-                        if rz > 0 { satir("Rezerve (ön sipariş)", miktar(rz, b)) }
-                        satir(rz > 0 ? "Satılabilir" : "Mevcut", miktar(r.mevcut, b)).bold()
-                    } header: {
-                        HStack { UrunGorseli(urun: u, boyut: 24, yaricap: 6); Text(u?.temizAd ?? r.urun) }
+            ScrollView {
+                VStack(spacing: 12) {
+                    HStack(spacing: 10) {
+                        ozet("Eldeki stok değeri", tl(deger), "\(satirlar.filter { $0.mevcut > 0 }.count) üründe stok", koyu: true)
+                        ozet("Toplam satış", tl(ciro), "Tüm sezonlar", koyu: false)
+                    }
+                    AkisDuzeni(aralik: 12) {
+                        ForEach([(renkSatis, "Satış"), (renkHediye, "Hediye"), (renkZekat, "Zekat"), (renkRezerve, "Rezerve"), (renkElde, "Elde")], id: \.1) { r, a in
+                            HStack(spacing: 5) { RoundedRectangle(cornerRadius: 3).fill(r).frame(width: 10, height: 10); Text(a).font(Yazi.etiket).foregroundStyle(Renk.metin2) }
+                        }
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Renk.kart.opacity(0.92), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    if satirlar.isEmpty {
+                        Text("Henüz stok girişi yok. Hasat ya da stok girişi ekleyince rapor burada oluşur.")
+                            .font(Yazi.govde).foregroundStyle(Renk.metin3).padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Renk.kart, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    ForEach(satirlar, id: \.urun) { r in
+                        Button { acikUrun = KimlikKutusu(id: r.urun) } label: { urunKarti(r, urunler.first { $0.v == r.urun }) }.buttonStyle(.plain)
                     }
                 }
+                .padding(.horizontal, Olcu.kenar).padding(.vertical, 8)
             }
             .navigationTitle("Stok Raporu")
             .formArkaplani()
@@ -529,8 +651,70 @@ struct StokRaporuSayfasi: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } }
                 ToolbarItem(placement: .topBarLeading) { RaporPaylasDugmesi() }
             }
+            .sheet(item: $acikUrun) { UrunStokSayfasi(urunId: $0.id) }
         }
     }
-    private func satir(_ a: String, _ b: String) -> some View { HStack { Text(a); Spacer(); Text(b).foregroundStyle(.secondary) } }
-}
 
+    private func ozet(_ baslik: String, _ d: String, _ alt: String, koyu: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(baslik).font(Yazi.kucuk).foregroundStyle(koyu ? Color(white: 0.85) : Renk.metin2)
+            Text(d).font(Yazi.nunito(23, .heavy)).foregroundStyle(koyu ? Renk.bal : Renk.orman).lineLimit(1).minimumScaleFactor(0.7)
+            Text(alt).font(Yazi.minik).foregroundStyle(koyu ? Color(white: 0.8) : Renk.metin3).lineLimit(1)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+        .background(koyu ? AnyShapeStyle(LinearGradient(colors: [Renk.orman2, Renk.ormanKoyu], startPoint: .topLeading, endPoint: .bottomTrailing)) : AnyShapeStyle(Renk.kart),
+                    in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(koyu ? Renk.bal.opacity(0.5) : Renk.krem2))
+    }
+
+    private func urunKarti(_ r: UrunRaporSatiri, _ u: UrunTanimi?) -> some View {
+        let b = u?.unit ?? ""
+        let rz = rezerveMiktar(depo.veri, urun: r.urun, urunBirimi: Birim(rawValue: b))
+        let fiyat = depo.ayarlar.stockPrices[r.urun] ?? 0
+        let elde = max(0, r.mevcut - rz)
+        let parcalar = [(r.satisMiktar, renkSatis), (r.hediye, renkHediye), (r.zekat, renkZekat), (rz, renkRezerve), (elde, renkElde)].filter { $0.0 > 0 }
+        let toplam = max(r.giris, parcalar.reduce(0) { $0 + $1.0 }, 0.0001)
+        return DogaKart {
+            HStack(spacing: 12) {
+                UrunGorseli(urun: u, boyut: 56, yaricap: 14).padding(.leading, 12).padding(.top, 4)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(u?.temizAd ?? r.urun).font(Yazi.nunito(18, .bold)).foregroundStyle(Renk.metin).lineLimit(1)
+                    Text("Toplam giriş \(miktar(r.giris, b))").font(Yazi.kucuk).foregroundStyle(Renk.metin2).lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(miktar(r.mevcut, b)).font(Yazi.nunito(20, .heavy)).foregroundStyle(r.mevcut <= 0 ? Renk.metin3 : Renk.orman)
+                    Text(fiyat > 0 && r.mevcut > 0 ? tl(r.mevcut * fiyat) : rz > 0 ? "satılabilir" : "mevcut").font(Yazi.minik).foregroundStyle(Renk.metin3)
+                }
+            }
+            GeometryReader { g in
+                HStack(spacing: 0) {
+                    ForEach(Array(parcalar.enumerated()), id: \.offset) { _, p in
+                        Rectangle().fill(p.1).frame(width: g.size.width * CGFloat(p.0 / toplam))
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+            .frame(height: 14)
+            .background(Renk.krem2)
+            .clipShape(Capsule())
+            if r.satisMiktar > 0 { satir(renkSatis, "Satış", miktar(r.satisMiktar, b), ek: tl(r.satisTutar)) }
+            if r.hediye > 0 { satir(renkHediye, "Hediye", miktar(r.hediye, b)) }
+            if r.zekat > 0 { satir(renkZekat, "Zekat", miktar(r.zekat, b)) }
+            if rz > 0 { satir(renkRezerve, "Rezerve (ön sipariş)", miktar(rz, b)) }
+            satir(renkElde, rz > 0 ? "Satılabilir" : "Elde", miktar(rz > 0 ? elde : r.mevcut, b))
+        }
+    }
+
+    private func satir(_ r: Color, _ a: String, _ d: String, ek: String? = nil) -> some View {
+        HStack(spacing: 8) {
+            RoundedRectangle(cornerRadius: 3).fill(r).frame(width: 9, height: 9)
+            Text(a).font(Yazi.kucuk).foregroundStyle(Renk.metin2)
+            Spacer()
+            if let ek { Text(ek).font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
+            Text(d).font(Yazi.kucukOrta).foregroundStyle(Renk.metin)
+        }
+        .padding(.vertical, 2)
+    }
+}

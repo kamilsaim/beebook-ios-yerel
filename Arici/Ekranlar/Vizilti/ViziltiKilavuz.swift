@@ -12,7 +12,7 @@ private let ornekler: [(String, String)] = [
     ("5 nolu kovandan dört kilo bal aldım.", "Bal sağımı (kg ile)"),
 ]
 
-/// Vızıltı'lı yeşil kahraman kutusu.
+/// Vızvız'lı yeşil kahraman kutusu.
 private struct ViziltiKahraman: View {
     let baslik: String
     let metin: String
@@ -58,7 +58,7 @@ private struct Anlarim: View {
     }
 }
 
-/// Vızıltı kullanım kılavuzu: Daha kartı, Ayarlar › Vızıltı, dinleme paneli.
+/// Vızvız kullanım kılavuzu: Daha kartı, Ayarlar › Vızvız, dinleme paneli.
 struct ViziltiKilavuzu: View {
     @Environment(\.dismiss) private var kapat
     var body: some View {
@@ -69,7 +69,7 @@ struct ViziltiKilavuzu: View {
                 }
                 .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
                 Section("Nasıl çalışır") {
-                    Adim(no: 1, baslik: "Ekranın kenarındaki Vızıltı'ya dokun", aciklama: "\"Bana emret\" yazan arı. Mikrofon iznini ilk seferde sorar.")
+                    Adim(no: 1, baslik: "Ekranın kenarındaki Vızvız'a dokun", aciklama: "\"Bana emret\" yazan arı. Mikrofon iznini ilk seferde sorar.")
                     Adim(no: 2, baslik: "Kovan numarasıyla başlayıp konuş", aciklama: "\"3 numaralı kovan…\" de, sonra gördüklerini sırayla söyle. Bitince \"Bitir\"e bas ya da sus.")
                     Adim(no: 3, baslik: "Formu kontrol et", aciklama: "Anladıklarım dolu gelir. Anlamadığım alan boş (—) kalır, tahmin yazmam. Yanlışı düzelt.")
                     Adim(no: 4, baslik: "Kaydet", aciklama: "Alttaki büyük Kaydet'e bas. Kovanın çerçeve sayısı ve katı da güncellenir; \"3 gün sonra bak\" dediysen işlere eklenir.")
@@ -104,12 +104,12 @@ struct ViziltiKilavuzu: View {
                     Anlarim(alan: "Besleme", ornek: "\"bir litre şurup verdim\", \"yarım kilo kek\", \"polen verdim\"")
                     Anlarim(alan: "Varroa", ornek: "\"şerit taktım / şeridi çıkardım\", \"oksalik asit damlattım\", \"12 akar düştü\", \"varroa yok\". Şerit takınca 6 hafta sonrasına \"şeridi çıkar\" işi eklenir.")
                     Anlarim(alan: "Hatırlatma", ornek: "\"üç gün sonra bakacağım\", \"haftaya\", \"yarın\", \"iki hafta sonra\"")
-                    Anlarim(alan: "Bal sağımı", ornek: "\"10 çerçeve bal aldım\" → çerçeve × kg tahmini (Ayarlar › Vızıltı), \"4 kilo bal aldım\". Stoğa girer, kovanın çerçevesi düşer.")
+                    Anlarim(alan: "Bal sağımı", ornek: "\"10 çerçeve bal aldım\" → çerçeve × kg tahmini (Ayarlar › Vızvız), \"4 kilo bal aldım\". Stoğa girer, kovanın çerçevesi düşer.")
                     Anlarim(alan: "Not", ornek: "Anlamadığım her şey (\"kapakta rutubet var\") nota yazılır.")
                 }
                 Section("Taşıma ve gizleme") {
-                    Adim(no: nil, baslik: "Taşı", aciklama: "Vızıltı'yı sürükle; bırakınca en yakın kenara yapışır, yerini hatırlarım.")
-                    Adim(no: nil, baslik: "Gizle", aciklama: "Basılı tut → \"Vızıltı'yı gizle\". Ana sayfadaki simgelerin en soluna geçerim; oradan basılı tutunca ya da Ayarlar › Vızıltı'dan geri gelirim.")
+                    Adim(no: nil, baslik: "Taşı", aciklama: "Vızvız'ı sürükle; bırakınca en yakın kenara yapışır, yerini hatırlarım.")
+                    Adim(no: nil, baslik: "Gizle", aciklama: "Basılı tut → \"Vızvız'ı gizle\". Ana sayfadaki simgelerin en soluna geçerim; oradan basılı tutunca ya da Ayarlar › Vızvız'dan geri gelirim.")
                 }
                 Section("İpuçları") {
                     Adim(no: nil, baslik: "Kısa ve sırayla", aciklama: "Önce kovan numarası, sonra gördüklerin. Uzun duraklarsan dinlemeyi bitiririm.")
@@ -117,7 +117,7 @@ struct ViziltiKilavuzu: View {
                     Adim(no: nil, baslik: "Çalışmazsa", aciklama: "\"Yaz\"a basıp aynı cümleyi yazabilirsin.")
                 }
             }
-            .navigationTitle("Vızıltı nasıl kullanılır")
+            .navigationTitle("Vızvız nasıl kullanılır")
             .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Kapat") { kapat() } } }
@@ -125,7 +125,7 @@ struct ViziltiKilavuzu: View {
     }
 }
 
-/// Daha sayfasındaki geniş "Vızıltı nasıl kullanılır" kartı.
+/// Daha sayfasındaki geniş "Vızvız nasıl kullanılır" kartı.
 struct ViziltiKilavuzKarti: View {
     @State private var ac = false
     var body: some View {
@@ -133,7 +133,7 @@ struct ViziltiKilavuzKarti: View {
             HStack(spacing: 12) {
                 Vizilti(cirpiyor: false).frame(width: 48, height: 66)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Vızıltı nasıl kullanılır").font(Yazi.govdeOrta).foregroundStyle(Renk.acikBal)
+                    Text("Vızvız nasıl kullanılır").font(Yazi.govdeOrta).foregroundStyle(Renk.acikBal)
                     Text("Sesle muayene ve bal sağımı kaydı, örnek cümleler").font(Yazi.kucuk).foregroundStyle(.white.opacity(0.85))
                 }
                 Spacer(minLength: 0)
@@ -225,7 +225,7 @@ struct OneriHatasi: LocalizedError {
     var errorDescription: String? { mesaj }
 }
 
-/// Ayarlar › Vızıltı › Anlamadıklarım: tek dokunuşla gönder (günde bir kez, en çok 5). Kendiliğinden gitmez.
+/// Ayarlar › Vızvız › Anlamadıklarım: tek dokunuşla gönder (günde bir kez, en çok 5). Kendiliğinden gitmez.
 struct ViziltiAnlamadiklari: View {
     @Environment(\.dismiss) private var kapat
     private var ayar: ViziltiAyari { .paylasilan }
@@ -244,7 +244,7 @@ struct ViziltiAnlamadiklari: View {
                 if let durum { Text(durum).font(Yazi.govdeOrta).foregroundStyle(Renk.orman2) }
                 if bekleme > 0 && !liste.isEmpty { Text("Bugün gönderdin; yarın yine gönderebilirsin.").font(Yazi.kucuk).foregroundStyle(Renk.metin3) }
                 if liste.isEmpty {
-                    Text("Henüz yok. Vızıltı'nın anlamadığı ya da nota yazdığı cümleler burada birikir.").font(Yazi.govde).foregroundStyle(Renk.metin2)
+                    Text("Henüz yok. Vızvız'ın anlamadığı ya da nota yazdığı cümleler burada birikir.").font(Yazi.govde).foregroundStyle(Renk.metin2)
                 } else {
                     Section("Cümleler (\(liste.count))") {
                         ForEach(liste, id: \.self) { a in
@@ -268,7 +268,7 @@ struct ViziltiAnlamadiklari: View {
                         Task {
                             do {
                                 let n = try await ViziltiOneri.gonder(Array(liste.reversed()))
-                                durum = "Teşekkürler! \(n) cümle gönderildi, Vızıltı bunları öğrenecek."
+                                durum = "Teşekkürler! \(n) cümle gönderildi, Vızvız bunları öğrenecek."
                             } catch { durum = error.localizedDescription }
                             bekleme = ViziltiOneri.bekleme
                             gonderiyor = false
@@ -286,7 +286,7 @@ struct ViziltiAnlamadiklari: View {
     }
 }
 
-/// Ayarlar › Vızıltı › Gelen öneriler (yalnız yönetici).
+/// Ayarlar › Vızvız › Gelen öneriler (yalnız yönetici).
 struct ViziltiOneriler: View {
     @Environment(\.dismiss) private var kapat
     @State private var islenen = false
@@ -320,7 +320,7 @@ struct ViziltiOneriler: View {
                     }
                 } else { ProgressView() }
             }
-            .navigationTitle("Vızıltı önerileri")
+            .navigationTitle("Vızvız önerileri")
             .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Kapat") { kapat() } } }

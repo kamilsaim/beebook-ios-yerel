@@ -28,16 +28,27 @@ struct SeriFormu: View {
                 Section { onizleme }.listeBasligi()
                 Section(header: Label("Seri", systemImage: "rosette")) {
                     TextField("Seri adı (ör. Seri A-26)", text: $ad)
-                    Picker("Irk", selection: $irk) { Text("—").tag(""); ForEach(depo.irklar + (irk.isEmpty || depo.irklar.contains(irk) ? [] : [irk]), id: \.self) { Text($0) } }
-                    Picker("Kuşak", selection: $kusak) { Text("—").tag(""); ForEach(kusakSecenekleri + (kusak.isEmpty || kusakSecenekleri.contains(kusak) ? [] : [kusak]), id: \.self) { Text($0) } }
                     Picker("Damızlık kovan", selection: $damizlik) { Text("—").tag(""); ForEach(kovanlar, id: \.id) { Text("Kovan \($0.num)").tag($0.id) } }
+                        .onChange(of: damizlik) { _, id in
+                            // Damızlığın ırkı/kuşağı boş alanlara kendiliğinden gelir
+                            if let k = depo.kovan(id) {
+                                if irk.isEmpty { irk = k.race ?? "" }
+                                if kusak.isEmpty { kusak = kusakDuzelt(k.generation) }
+                            }
+                        }
+                    CipSecici(baslik: "Irk", secenekler: (depo.irklar + (irk.isEmpty || depo.irklar.contains(irk) ? [] : [irk])).map { ($0, $0) }, secili: irk) { irk = irk == $0 ? "" : $0 }
+                    CipSecici(baslik: "Kuşak", secenekler: (kusakSecenekleri + (kusak.isEmpty || kusakSecenekleri.contains(kusak) ? [] : [kusak])).map { ($0, $0) }, secili: kusak) { kusak = kusak == $0 ? "" : $0 }
                     Picker("Başlatıcı kovan", selection: $baslatici) { Text("—").tag(""); ForEach(kovanlar, id: \.id) { Text("Kovan \($0.num)").tag($0.id) } }
                     DatePicker("Larva transferi", selection: $transfer, displayedComponents: .date)
+                    CipSecici(baslik: nil, secenekler: [(0, "Bugün"), (1, "Dün"), (2, "2 gün önce"), (3, "3 gün önce")],
+                              secili: (0...3).first { Calendar.current.isDate(transfer, inSameDayAs: Calendar.current.date(byAdding: .day, value: -$0, to: Date()) ?? Date()) }) {
+                        transfer = Calendar.current.date(byAdding: .day, value: -$0, to: Date()) ?? Date()
+                    }
                 }
-                Section(header: Label("Sonuç", systemImage: "chart.bar"), footer: Text("Meme listesi Kaydet'te tutan/çıkan sayısına göre güncellenir.")) {
-                    sayiAdimi("Aşılanan", $graft)
-                    sayiAdimi("Tutan (meme)", $tutan)
-                    sayiAdimi("Çıkan", $cikan)
+                Section(header: Label("Sonuç", systemImage: "chart.bar"), footer: Text("Sonra seri sayfasından da sayılara dokunup düzeltebilirsin.")) {
+                    SayiGirisi(etiket: "Aşılanan", deger: $graft, hizli: [10, 15, 20, 25, 30, 40, 60], alt: "Transfer edilen larva")
+                    SayiGirisi(etiket: "Tutan (meme)", deger: $tutan, hizli: tutanOnerileri(Int(graft) ?? 0), alt: (Int(graft) ?? 0) > 0 ? "Hepsi, %90 … %50" : nil)
+                    SayiGirisi(etiket: "Çıkan", deger: $cikan, hizli: cikanOnerileri(Int(tutan) ?? 0), alt: "Çıkmayanlar listeden düşer")
                     if let g = Int(graft), let t = Int(tutan), g > 0, t > 0 {
                         HStack { Text("Tutma oranı"); Spacer(); Text("%\(Int((Double(t) * 100 / Double(g)).rounded()))").font(Yazi.nunito(16, .bold)).foregroundStyle(t * 100 / g >= 60 ? Renk.iyi : Renk.uyari) }
                     }
@@ -72,6 +83,7 @@ struct SeriFormu: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Kaydet") { memeListesiniGuncelle(); kaydet(); kapat() } }
                 ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Bitti") { memeListesiniGuncelle(); UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) } }
             }
+            .safeAreaInset(edge: .bottom) { BuyukKaydetCubugu { memeListesiniGuncelle(); kaydet(); kapat() } }
             .confirmationDialog("Seri silinsin mi?", isPresented: $silOnay, titleVisibility: .visible) {
                 Button("Sil", role: .destructive) { depo.degistir { v in v.seriler = v.seriler.filter { $0.id != seriId } }; kapat() }
             }
@@ -81,11 +93,6 @@ struct SeriFormu: View {
 
     private var kovanlar: [Kovan] { depo.veri.kovanlar.sorted { $0.numara < $1.numara } }
 
-    private func sayiAdimi(_ etiket: String, _ deger: Binding<String>) -> some View {
-        Stepper(value: Binding(get: { Int(deger.wrappedValue) ?? 0 }, set: { deger.wrappedValue = $0 > 0 ? String($0) : "" }), in: 0...500) {
-            HStack { Text(etiket); Spacer(); Text(deger.wrappedValue.isEmpty ? "—" : deger.wrappedValue).font(Yazi.nunito(17, .bold)).foregroundStyle(Renk.orman2) }
-        }
-    }
 
     /// Canlı önizleme: ad, ırk · kuşak, çıkım tarihi ve durum.
     private var onizleme: some View {
@@ -112,18 +119,13 @@ struct SeriFormu: View {
 
     /// Tutan sayısı kadar meme; çıkan girildiyse min(çıkan, tutan)'a kısalır, gerekirse tekrar büyür (web v2.4).
     private func memeListesiniGuncelle() {
-        let t = Int(tutan) ?? 0
-        let hedef = Int(cikan).map { min($0, t) } ?? t
-        if memeler.count > hedef { memeler = Array(memeler.prefix(hedef)) }
-        while memeler.count < hedef {
-            memeler.append(Meme(["id": .metin(yeniKimlik()), "num": .metin(String(memeler.count + 1)), "status": .metin("pending"), "targetHive": .metin("")]))
-        }
+        memeler = memeleriBoyutla(memeler, tutan: Int(tutan) ?? 0, cikan: Int(cikan))
     }
 
     private func yukle() {
         guard !yuklendi else { return }
         yuklendi = true
-        guard let s = depo.veri.seriler.first(where: { $0.id == seriId }) else { return }
+        guard let s = depo.veri.seriler.first(where: { $0.id == seriId }) else { ad = seriAdiOnerisi(depo.veri.seriler); return }
         ad = s.name ?? ""; irk = s.race ?? ""; kusak = kusakDuzelt(s.generation); damizlik = s.motherHive ?? ""; baslatici = s.starterHive ?? ""
         transfer = isoTarih(s.transfer) ?? Date()
         graft = s.grafted.map { String(Int($0)) } ?? ""; tutan = s.accepted.map { String(Int($0)) } ?? ""
@@ -145,4 +147,38 @@ struct SeriFormu: View {
             v.seriler = l
         }
     }
+}
+
+// MARK: Ana arı yardımcıları (Android AnaAri.kt ile aynı)
+
+/// Tutan sayısı kadar meme; çıkan girildiyse min(çıkan, tutan)'a kısalır, gerekirse tekrar büyür (web v2.4). Var olanların durumu korunur.
+func memeleriBoyutla(_ liste: [Meme], tutan: Int, cikan: Int?) -> [Meme] {
+    let hedef = cikan.map { min($0, tutan) } ?? tutan
+    var l = Array(liste.prefix(max(0, hedef)))
+    while l.count < hedef {
+        l.append(Meme(["id": .metin(yeniKimlik()), "num": .metin(String(l.count + 1)), "status": .metin("pending"), "targetHive": .metin("")]))
+    }
+    return l
+}
+
+/// Tutan için hazır değerler: hepsi tuttu, %90 … %50.
+func tutanOnerileri(_ asilanan: Int) -> [Int] {
+    guard asilanan > 0 else { return [5, 10, 15, 20, 30] }
+    var l: [Int] = []
+    for o in [1.0, 0.9, 0.8, 0.7, 0.6, 0.5] {
+        let n = Int((Double(asilanan) * o).rounded())
+        if n > 0 && !l.contains(n) { l.append(n) }
+    }
+    return l
+}
+
+/// Çıkan için hazır değerler: hepsi çıktı, sonra birer eksik.
+func cikanOnerileri(_ tutan: Int) -> [Int] { tutan <= 0 ? [] : (0...5).map { tutan - $0 }.filter { $0 > 0 } }
+
+/// Yeni seriye ad önerisi: bu yıl açılan seri sayısına göre harf (Seri A-26, Seri B-26 …).
+func seriAdiOnerisi(_ seriler: [AnaSeri]) -> String {
+    let yil = Calendar.current.component(.year, from: Date())
+    let n = seriler.filter { ($0.transfer ?? "").hasPrefix("\(yil)") }.count
+    let harf = Character(UnicodeScalar(UInt8(65 + n % 26)))
+    return "Seri \(harf)-\(yil % 100)"
 }

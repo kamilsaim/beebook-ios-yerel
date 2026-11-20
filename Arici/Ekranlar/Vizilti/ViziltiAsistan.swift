@@ -3,10 +3,10 @@ import AVFoundation
 import Speech
 import SwiftUI
 
-// Vızıltı sesli kayıt — Android `ViziltiAsistan.kt` ile aynı akış: kenarda yüzen maskot → dokun → konuş →
+// Vızvız sesli kayıt — Android `ViziltiAsistan.kt` ile aynı akış: kenarda yüzen maskot → dokun → konuş →
 // ayrıştırıcı (AriCekirdek/Vizilti.swift) → muayene / bal sağımı formu önceden dolu açılır; kullanıcı kontrol edip kaydeder.
 
-/// Vızıltı'nın açacağı form.
+/// Vızvız'ın açacağı form.
 enum ViziltiHedef: Identifiable {
     case muayene(kovanId: String, taslak: ViziltiSonuc?)
     case balSagimi(kovanId: String, taslak: ViziltiSonuc?)
@@ -25,7 +25,7 @@ struct Anlamadigi: Codable, Hashable {
     var kalan: String?
 }
 
-/// Cihaza özel Vızıltı tercihleri ve kabuk ile ekranlar arası istekler.
+/// Cihaza özel Vızvız tercihleri ve kabuk ile ekranlar arası istekler.
 @MainActor @Observable
 final class ViziltiAyari {
     static let paylasilan = ViziltiAyari()
@@ -47,7 +47,7 @@ final class ViziltiAyari {
     var acikKovanId: String?
     /// Arazi turundaki kovan (numarasız cümle o kovana gider; detaydan önce).
     var turKovanId: String?
-    /// Arazi tam ekranı açık: Vızıltı formunu kabuk değil arazi açar.
+    /// Arazi tam ekranı açık: Vızvız formunu kabuk değil arazi açar.
     var araziAcik = false
     /// Kabuğun açacağı form.
     var hedef: ViziltiHedef?
@@ -79,7 +79,7 @@ final class ViziltiAyari {
     }
 }
 
-/// Önceden seslendirilmiş kısa cevaplar (Ses/vizilti_*.m4a). Vızıltı sesi kapalıysa susar.
+/// Önceden seslendirilmiş kısa cevaplar (Ses/vizilti_*.m4a). Vızvız sesi kapalıysa susar.
 @MainActor @Observable
 final class ViziltiSes {
     static let paylasilan = ViziltiSes()
@@ -342,8 +342,8 @@ private struct YuzenBalon: View {
             .frame(width: g.size.width, height: g.size.height)
         }
         .ignoresSafeArea(.keyboard)
-        .confirmationDialog("Vızıltı", isPresented: $menu, titleVisibility: .hidden) {
-            Button("Vızıltı'yı gizle") { ayar.balonAcik = false }
+        .confirmationDialog("Vızvız", isPresented: $menu, titleVisibility: .hidden) {
+            Button("Vızvız'ı gizle") { ayar.balonAcik = false }
             Button("Vazgeç", role: .cancel) {}
         } message: { Text("Gizlersen ana sayfadaki simgelerin en soluna geçer; oradan basılı tutunca geri gelir.") }
     }
@@ -360,7 +360,7 @@ private struct YuzenBalon: View {
                 .shadow(color: .black.opacity(0.3), radius: 3, y: 2)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Vızıltı, sesle kayıt")
+        .accessibilityLabel("Vızvız, sesle kayıt")
         .accessibilityAddTraits(.isButton)
     }
 }
@@ -391,7 +391,7 @@ private struct DinlemePaneli: View {
                 HStack(spacing: 12) {
                     Vizilti(cirpiyor: tanima.dinliyor || ses.konusuyor, konusuyor: ses.konusuyor).frame(width: 62, height: 88)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Vızıltı").font(Yazi.nunito(20, .heavy)).foregroundStyle(Renk.acikBal)
+                        Text("Vızvız").font(Yazi.nunito(20, .heavy)).foregroundStyle(Renk.acikBal)
                         Text(baslik).font(Yazi.govdeOrta).foregroundStyle(Renk.krem)
                     }
                     Spacer()
@@ -564,7 +564,7 @@ private struct SesDalgasi: View {
     }
 }
 
-/// Gizlenmiş Vızıltı'nın ana sayfa hızlı erişimindeki kutusu (en solda): dokun → dinle, basılı tut → ekrana geri.
+/// Gizlenmiş Vızvız'ın ana sayfa hızlı erişimindeki kutusu (en solda): dokun → dinle, basılı tut → ekrana geri.
 struct ViziltiKisayolKutusu: View {
     var body: some View {
         VStack(spacing: 6) {
@@ -576,12 +576,12 @@ struct ViziltiKisayolKutusu: View {
                 Vizilti(cirpiyor: false).frame(width: 50, height: 70)
             }
             .frame(width: 74, height: 74)
-            Text("Vızıltı").font(Yazi.etiket).foregroundStyle(Renk.krem).lineLimit(1)
+            Text("Vızvız").font(Yazi.etiket).foregroundStyle(Renk.krem).lineLimit(1)
         }
         .frame(width: 78)
         .contentShape(Rectangle())
         .onTapGesture { ViziltiAyari.paylasilan.panelIstegi = true }
         .onLongPressGesture { ViziltiAyari.paylasilan.balonAcik = true }
-        .accessibilityLabel("Vızıltı, sesle kayıt")
+        .accessibilityLabel("Vızvız, sesle kayıt")
     }
 }

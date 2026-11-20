@@ -42,7 +42,7 @@ struct KovanDetayi: View {
             .sheet(isPresented: $duzenle) { KovanFormu(kovanId: k.id) }
             .sheet(isPresented: $muayene) { MuayeneFormu(kovanId: k.id) }
             .sheet(isPresented: $balSagimi) { BalSagimiFormu(kovanId: k.id) }
-            // Vızıltı'ya numarasız söylenen cümle bu kovana gider
+            // Vızvız'a numarasız söylenen cümle bu kovana gider
             .onAppear { ViziltiAyari.paylasilan.acikKovanId = k.id }
             .onDisappear { if ViziltiAyari.paylasilan.acikKovanId == k.id { ViziltiAyari.paylasilan.acikKovanId = nil } }
         } else {

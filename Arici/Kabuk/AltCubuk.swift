@@ -38,6 +38,8 @@ final class MenuDurumu {
     var yeniKovanIstegi = 0
     /// Ana sayfadaki kısayollar: Daha sekmesinde bu sayfayı aç.
     var dahaIstegi: DahaSayfa?
+    /// Alt menüdeki arıya (Vızvız) dokununca açılan hızlı ekleme menüsü.
+    var hizliMenu = false
 
     func git(_ s: Sekme) {
         ince = false
@@ -160,8 +162,10 @@ struct AltCubuk: View {
                     .scaleEffect(x: 1, y: konuyor ? 0.94 : 1, anchor: .bottom)
                     .offset(x: ariX - 20, y: (ince ? -46 : -54) + (ucuyor ? -14 : 0))
                     .shadow(color: .black.opacity(0.4), radius: 3, y: 3)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
+                    .contentShape(Rectangle())
+                    .onTapGesture { durum.hizliMenu = true }
+                    .accessibilityLabel("Hızlı ekle")
+                    .accessibilityAddTraits(.isButton)
             }
             .onAppear {
                 olcu = w

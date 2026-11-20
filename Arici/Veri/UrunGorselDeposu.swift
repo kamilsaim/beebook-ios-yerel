@@ -67,11 +67,15 @@ func hazirSimge(_ urunId: String) -> String? {
     case "polen": return "UrunPolen"
     case "ana_ari": return "UrunAnaari"
     case "kovan", "arili_kovan", "ari": return "UrunKovan"
-    default: return nil
+    // Kullanıcı ürünleri: kimlik addan türer (bal_sirkesi, propolis, bal_sirkesi_2 …)
+    default:
+        if urunId.hasPrefix("propolis") { return "UrunPropolis" }
+        if urunId.contains("sirke") { return "UrunSirke" }
+        return nil
     }
 }
 
-let hazirSimgeler = ["UrunSuzme", "UrunPetek", "UrunKarakovan", "UrunPolen", "UrunSut", "UrunKovan", "UrunAnaari"]
+let hazirSimgeler = ["UrunSuzme", "UrunPetek", "UrunKarakovan", "UrunPolen", "UrunSut", "UrunPropolis", "UrunSirke", "UrunKovan", "UrunAnaari"]
 
 /// Ürün görseli: kullanıcı fotoğrafı (`<uid>/<id>.jpg`), hazır simge (`hazir:Ad`) ya da yer tutucu şişe.
 struct UrunGorseli: View {

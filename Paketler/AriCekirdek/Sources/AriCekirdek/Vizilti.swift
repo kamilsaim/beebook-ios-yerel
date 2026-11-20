@@ -1,6 +1,6 @@
 import Foundation
 
-// Vızıltı sesli kayıt ayrıştırıcısı — Android `cekirdek/Vizilti.kt` ile birebir (aynı kurallar, aynı test cümleleri).
+// Vızvız sesli kayıt ayrıştırıcısı — Android `cekirdek/Vizilti.kt` ile birebir (aynı kurallar, aynı test cümleleri).
 // Konuşma tanımanın verdiği metinden kovan numarasını ve muayene/bal sağımı alanlarını çıkarır.
 // Kural: anlaşılmayan alan nil kalır, tahmin yazılmaz. "Ana görülmedi" ≠ "ana yok".
 
@@ -199,7 +199,7 @@ private let kurallar: [Kural] = [
 /// Not'a girmeyecek dolgu sözcükleri (yalnız kalan parçanın baş/sonundan atılır).
 private let dolgu: Set<String> = [
     "ve", "de", "da", "ile", "bugün", "tamam", "kaydet", "evet", "şimdi", "bakım", "bakımı", "bakımını", "muayene", "muayenesi", "kontrol", "kontrolü",
-    "kovan", "kovanı", "kovanın", "kovanda", "kovandan", "kovana", "durumu", "durum", "arı", "vızıltı", "merhaba", "hey", "sonra", "yaptım", "verdim",
+    "kovan", "kovanı", "kovanın", "kovanda", "kovandan", "kovana", "durumu", "durum", "arı", "vızıltı", "vızvız", "merhaba", "hey", "sonra", "yaptım", "verdim",
     "aldım", "bakacağım", "varroa", "akar", "ilacı", "mücadelesi", "bakarım", "bakalım", "gelip", "ee", "eee", "ıı", "hmm", "şey", "yani", "bir", "numaralı", "nolu", "çerçeve",
 ]
 

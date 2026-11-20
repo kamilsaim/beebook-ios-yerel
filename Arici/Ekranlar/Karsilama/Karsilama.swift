@@ -2,9 +2,9 @@ import AVFoundation
 import SwiftUI
 import UserNotifications
 
-/// Karşılama (Android Karsilama ile aynı): ilk açılışta ve güncelleyen kullanıcılara bir kez, Vızıltı kanat çırparak
+/// Karşılama (Android Karsilama ile aynı): ilk açılışta ve güncelleyen kullanıcılara bir kez, Vızvız kanat çırparak
 /// 6 sayfada uygulamayı anlatır; cümleler ema-lightning ile önceden seslendirildi (Ses/karsilama_N.m4a).
-/// Ayarlar › Vızıltı › "Tanıtımı tekrar göster" ile yeniden açılır. Tercihler cihaza özel.
+/// Ayarlar › Vızvız › "Tanıtımı tekrar göster" ile yeniden açılır. Tercihler cihaza özel.
 @MainActor @Observable
 final class KarsilamaDurumu {
     static let paylasilan = KarsilamaDurumu()
@@ -36,12 +36,12 @@ private struct KarsilamaSayfasi {
 }
 
 private let sayfalar: [KarsilamaSayfasi] = [
-    .init(baslik: "Hoş geldin!", soz: "Akıllı arıcılık sistemimize hoş geldin! Ben Vızıltı, sana yol göstereceğim.", ses: "karsilama_1", gorseller: []),
+    .init(baslik: "Hoş geldin!", soz: "Akıllı arıcılık sistemimize hoş geldin! Ben Vızvız, sana yol göstereceğim.", ses: "karsilama_1", gorseller: []),
     .init(baslik: "Kovanlar ve arazi", soz: "Kovanlarını kart kart takip et, arazi düzeninde yerlerine diz. Ana arıların takvimini de ben hatırlarım.", ses: "karsilama_2", gorseller: ["SimgeKovan", "SimgeArazi", "SimgeAnaAri"]),
     .init(baslik: "Satış ve stok tek yerde", soz: "Satışların, stoğun, zekat ve hediyelerin, giderlerin hepsi tek yerde. Kimden ne alacağın da hesapta.", ses: "karsilama_3", gorseller: ["SimgeSatis", "SimgeHediye", "SimgeZekat"]),
     .init(baslik: "Hatırlatmalar", soz: "İzin verirsen, Dağıtım ve Çıkım günü sabah seni uyarırım. Günün işlerini de unutturmam.", ses: "karsilama_4", gorseller: ["SimgeSezon"]),
     .init(baslik: "Verilerin güvende", soz: "Giriş yaparsan verilerin bulutta saklanır, telefonların eşitlenir. İstersen girişsiz de kullanabilirsin.", ses: "karsilama_5", gorseller: ["SimgeYedek"]),
-    .init(baslik: "Bana emret!", soz: "Ekrandaki Vızıltı'ya dokun, kovanını anlat: “3 numaralı kovan, ana görüldü, 8 çerçeve.” Formu ben doldururum, sen kontrol edip kaydedersin. Hadi başlayalım!", ses: "karsilama_6", gorseller: []),
+    .init(baslik: "Bana emret!", soz: "Ekrandaki Vızvız'a dokun, kovanını anlat: “3 numaralı kovan, ana görüldü, 8 çerçeve.” Formu ben doldururum, sen kontrol edip kaydedersin. Hadi başlayalım!", ses: "karsilama_6", gorseller: []),
 ]
 
 struct KarsilamaEkrani: View {
@@ -246,7 +246,7 @@ private struct SayfaIcerigi: View {
     }
 }
 
-/// Vızıltı: gövde + kanat ayrı katman (kanatlar birleşme noktası %33/%48,5 etrafında çırpar);
+/// Vızvız: gövde + kanat ayrı katman (kanatlar birleşme noktası %33/%48,5 etrafında çırpar);
 /// konuşurken ağız yaması (ViziltiAgiz) hece ritminde açılıp kapanır.
 struct Vizilti: View {
     var cirpiyor = true
@@ -279,11 +279,11 @@ struct Vizilti: View {
                 }
             }
         }
-        .accessibilityLabel("Vızıltı")
+        .accessibilityLabel("Vızvız")
     }
 }
 
-/// Ayarlar › Vızıltı: ses, balon, bal sağımı ortalaması, kılavuz, anlamadıklarım, (yönetici) gelen öneriler, tanıtım.
+/// Ayarlar › Vızvız: ses, balon, bal sağımı ortalaması, kılavuz, anlamadıklarım, (yönetici) gelen öneriler, tanıtım.
 struct ViziltiAyarlariBolumu: View {
     @Environment(\.dismiss) private var kapat
     @Environment(OturumYoneticisi.self) private var oturum
@@ -296,12 +296,12 @@ struct ViziltiAyarlariBolumu: View {
 
     var body: some View {
         @Bindable var a = ayar
-        Section(header: Label("Vızıltı", systemImage: "ladybug")) {
+        Section(header: Label("Vızvız", systemImage: "ladybug")) {
             Toggle(isOn: $ses) {
                 Label {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Vızıltı sesi").foregroundStyle(Renk.metin)
-                        Text(ses ? "Vızıltı konuşur" : "Sessiz").font(Yazi.minik).foregroundStyle(Renk.metin2)
+                        Text("Vızvız sesi").foregroundStyle(Renk.metin)
+                        Text(ses ? "Vızvız konuşur" : "Sessiz").font(Yazi.minik).foregroundStyle(Renk.metin2)
                     }
                 } icon: { Image(systemName: "waveform") }
             }
@@ -321,13 +321,13 @@ struct ViziltiAyarlariBolumu: View {
             }
             Button { kilavuz = true } label: { satir("Nasıl kullanılır", "Örnek cümleler, neleri anlar", "questionmark.circle") }
             Button { anlamadi = true } label: {
-                satir("Anlamadıklarım", ayar.anlamadiklari.isEmpty ? "Vızıltı'nın anlamadığı cümleler burada birikir" : "\(ayar.anlamadiklari.count) cümle", "text.bubble")
+                satir("Anlamadıklarım", ayar.anlamadiklari.isEmpty ? "Vızvız'ın anlamadığı cümleler burada birikir" : "\(ayar.anlamadiklari.count) cümle", "text.bubble")
             }
             if yonetici { Button { oneriler = true } label: { satir("Gelen öneriler", "Kullanıcıların gönderdiği cümleler", "tray.full") } }
             Button {
                 kapat()
                 KarsilamaDurumu.paylasilan.goster = true
-            } label: { satir("Tanıtımı tekrar göster", "Vızıltı uygulamayı yeniden anlatsın", "arrow.counterclockwise") }
+            } label: { satir("Tanıtımı tekrar göster", "Vızvız uygulamayı yeniden anlatsın", "arrow.counterclockwise") }
         }
         .sheet(isPresented: $kilavuz) { ViziltiKilavuzu() }
         .sheet(isPresented: $anlamadi) { ViziltiAnlamadiklari() }

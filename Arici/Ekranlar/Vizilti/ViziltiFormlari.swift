@@ -1,7 +1,7 @@
 import AriCekirdek
 import SwiftUI
 
-// Android `Kovanlar.kt › MuayeneFormu / BalSagimiFormu` ile aynı: Vızıltı'dan gelince (`taslak`) alanlar dolu,
+// Android `Kovanlar.kt › MuayeneFormu / BalSagimiFormu` ile aynı: Vızvız'dan gelince (`taslak`) alanlar dolu,
 // anlaşılmayan alan boş (—) kalır, tahmin yazılmaz. Altta büyük Kaydet (son dokunuş kullanıcıda).
 
 extension VeriDeposu {
@@ -65,14 +65,14 @@ struct BuyukKaydetCubugu: View {
     }
 }
 
-/// Vızıltı'nın duyduğu cümle: formun başında "kontrol et" notu.
+/// Vızvız'ın duyduğu cümle: formun başında "kontrol et" notu.
 struct ViziltiNotu: View {
     let metin: String
     var body: some View {
         HStack(spacing: 10) {
             Vizilti(cirpiyor: false, konusuyor: ViziltiSes.paylasilan.konusuyor).frame(width: 38, height: 54)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Vızıltı doldurdu — kontrol et, sonra Kaydet").font(Yazi.kucukOrta).foregroundStyle(Renk.orman)
+                Text("Vızvız doldurdu — kontrol et, sonra Kaydet").font(Yazi.kucukOrta).foregroundStyle(Renk.orman)
                 Text("“\(metin)”").font(Yazi.kucuk).foregroundStyle(Renk.metin2)
             }
         }
@@ -83,7 +83,7 @@ struct ViziltiNotu: View {
     }
 }
 
-/// Üç durumlu alan: Vızıltı anlamadıysa (nil) "— / Var / Yok" seçimi, sonra anahtar.
+/// Üç durumlu alan: Vızvız anlamadıysa (nil) "— / Var / Yok" seçimi, sonra anahtar.
 private struct UcDurum: View {
     let baslik: String
     let evet: String
@@ -148,7 +148,7 @@ struct MuayeneFormu: View {
                         Text("Düzenli").tag("duzenli"); Text("Seyrek").tag("seyrek"); Text("Yok").tag("yok")
                     }
                     .pickerStyle(.segmented)
-                    CipSecici(baslik: guc == nil ? "Güç: — (Vızıltı anlamadı)" : "Güç", secenekler: [(1, "1 Çok zayıf"), (2, "2 Zayıf"), (3, "3 Orta"), (4, "4 Güçlü"), (5, "5 Çok güçlü")], secili: guc) { guc = $0 }
+                    CipSecici(baslik: guc == nil ? "Güç: — (Vızvız anlamadı)" : "Güç", secenekler: [(1, "1 Çok zayıf"), (2, "2 Zayıf"), (3, "3 Orta"), (4, "4 Güçlü"), (5, "5 Çok güçlü")], secili: guc) { guc = $0 }
                     Stepper(value: $cerceve, in: 0...40) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(cerceve != eskiCerceve ? "Kovan çerçevesi: \(cerceveYazi(eskiCerceve)) → \(cerceveYazi(cerceve))" : "Kovan çerçevesi: \(cerceveYazi(cerceve))")
@@ -288,7 +288,7 @@ struct BalSagimiFormu: View {
                         if kgElle != nil && alinan > 0 { Button("Tahmine dön") { kgElle = nil }.font(Yazi.etiket).buttonStyle(.borderless) }
                     }
                 } header: { Label("Sağım", systemImage: "drop") } footer: {
-                    if kgElle == nil && alinan > 0 { Text("Ortalama: çerçeve başı \(ondalikMetni(kgBasi)) kg · Ayarlar › Vızıltı'dan değişir") }
+                    if kgElle == nil && alinan > 0 { Text("Ortalama: çerçeve başı \(ondalikMetni(kgBasi)) kg · Ayarlar › Vızvız'dan değişir") }
                 }
                 Section {
                     Toggle("Stoğa giriş olarak ekle", isOn: $stogaEkle).tint(Renk.orman2)

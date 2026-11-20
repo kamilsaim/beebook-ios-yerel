@@ -197,7 +197,7 @@ struct HizliErisim: View {
         // Sağa sola kaydırılır; sayfa kenar boşluğunu taşıp ekran kenarına uzanır (simgeler kenarda kesilmez).
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                // Gizlenen Vızıltı en solda: dokun → dinle, basılı tut → ekrana geri
+                // Gizlenen Vızvız en solda: dokun → dinle, basılı tut → ekrana geri
                 if !ViziltiAyari.paylasilan.balonAcik { ViziltiKisayolKutusu() }
                 simge("SimgeKovan", "Kovan") { menu.git(.kovanlar) }
                 simge("SimgeAnaAri", "Ana Arı") { menu.git(.anaAri) }

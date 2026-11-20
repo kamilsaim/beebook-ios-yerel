@@ -23,9 +23,11 @@ struct AnaKabuk: View {
         m.secili = Baslatma.ilkSekme
         return m
     }()
+    @State private var stokGirisi = false
+    @State private var gider = false
 
     var body: some View {
-        // Vızıltı formu: hedef gövdede okunur ki değişince sheet açılsın (Binding kapanışındaki okuma izlenmez)
+        // Vızvız formu: hedef gövdede okunur ki değişince sheet açılsın (Binding kapanışındaki okuma izlenmez)
         let _ = ViziltiAyari.paylasilan.hedef?.id
         ZStack(alignment: .bottom) {
             Renk.orman.ignoresSafeArea()
@@ -38,11 +40,16 @@ struct AnaKabuk: View {
                 }
             }
             AltCubuk(durum: menu)
-            // Vızıltı: yüzen balon + dinleme paneli (alt menünün de üstünde)
+            // Hızlı ekleme (arıya dokun): kovan, satış, stok, gider, sesle kayıt
+            if menu.hizliMenu { HizliMenu(menu: menu, stokGirisi: $stokGirisi, gider: $gider).transition(.opacity).zIndex(5) }
+            // Vızvız: yüzen balon + dinleme paneli (alt menünün de üstünde)
             ViziltiKatmani()
         }
         .environment(menu)
         .sheet(item: Binding(get: { ViziltiAyari.paylasilan.araziAcik ? nil : ViziltiAyari.paylasilan.hedef }, set: { ViziltiAyari.paylasilan.hedef = $0 })) { ViziltiHedefFormu(hedef: $0) }
+        .sheet(isPresented: $stokGirisi) { StokGirisFormu() }
+        .sheet(isPresented: $gider) { GiderFormu(giderId: nil) }
+        .animation(.easeOut(duration: 0.2), value: menu.hizliMenu)
         .preferredColorScheme(.dark)
         .onAppear(perform: rozetleriGuncelle)
         .onChange(of: depo.veri) { _, _ in rozetleriGuncelle() }

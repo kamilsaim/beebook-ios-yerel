@@ -84,7 +84,7 @@ targets:
             UIApplicationShortcutItemIconSymbolName: plus.square.on.square
         NSCameraUsageDescription: Kovan plakasındaki barkodu okumak ve ürün fotoğrafı çekmek için kamera kullanılır.
         NSPhotoLibraryUsageDescription: Ürün görseli seçmek için fotoğraflarına erişilir.
-        NSMicrophoneUsageDescription: Vızıltı ile kovan muayenesini sesle kaydetmek için mikrofon kullanılır.
+        NSMicrophoneUsageDescription: Vızvız ile kovan muayenesini sesle kaydetmek için mikrofon kullanılır.
         NSSpeechRecognitionUsageDescription: Söylediklerini yazıya çevirip muayene ve bal sağımı formunu doldurmak için konuşma tanıma kullanılır.
         GIDClientID: $(GOOGLE_IOS_ISTEMCI)
         GIDServerClientID: $(GOOGLE_WEB_ISTEMCI)
