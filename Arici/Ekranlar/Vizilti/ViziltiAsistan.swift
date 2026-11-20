@@ -371,9 +371,11 @@ enum ViziltiAsama { case dinliyor, yaziyla, hata, kovanSec }
 
 /// Alttan açılan panel: maskot + ses dalgası + canlı metin + [İptal] [Yaz] [Bitir].
 /// `isle` sonucu yönlendirir; panelde kalınacaksa yeni aşamayı döner.
-private struct DinlemePaneli: View {
+struct DinlemePaneli: View {
     @Environment(VeriDeposu.self) private var depo
     let kapat: () -> Void
+    /// Formdaki "Sesle ekle": örnek cümle buna göre (kovan numarası gerekmez).
+    var formaEkle = false
     let isle: (ViziltiSonuc, Kovan?) -> ViziltiAsama?
     @State private var tanima = SesTanima()
     @State private var asama: ViziltiAsama = .dinliyor
@@ -401,7 +403,7 @@ private struct DinlemePaneli: View {
                 ScrollView {
                     Group {
                         if !gosterilen.isEmpty { Text("“\(gosterilen)”").font(Yazi.govde).foregroundStyle(.white) }
-                        else { Text("Örn: \"3 numaralı kovan, 5 çerçeve, ana görüldü, yumurta var, güçlü.\"").font(Yazi.nunito(14).italic()).foregroundStyle(Renk.krem.opacity(0.6)) }
+                        else { Text(formaEkle ? "Forma eklenecek, kovan numarası gerekmez. Örn: \"yavru seyrek, 2 litre şurup verdim.\"" : "Örn: \"3 numaralı kovan, 5 çerçeve, ana görüldü, yumurta var, güçlü.\"").font(Yazi.nunito(14).italic()).foregroundStyle(Renk.krem.opacity(0.6)) }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)

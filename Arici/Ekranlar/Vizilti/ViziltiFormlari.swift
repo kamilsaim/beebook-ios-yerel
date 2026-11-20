@@ -67,13 +67,28 @@ struct BuyukKaydetCubugu: View {
 
 /// Vızvız'ın duyduğu cümle: formun başında "kontrol et" notu.
 struct ViziltiNotu: View {
-    let metin: String
+    let metin: String?
+    /// Verilirse sağda "Ekle/Konuş" düğmesi: söylenen yeni form açmadan bu forma eklenir.
+    var sesleEkle: (() -> Void)? = nil
     var body: some View {
         HStack(spacing: 10) {
             Vizilti(cirpiyor: false, konusuyor: ViziltiSes.paylasilan.konusuyor).frame(width: 38, height: 54)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Vızvız doldurdu — kontrol et, sonra Kaydet").font(Yazi.kucukOrta).foregroundStyle(Renk.orman)
-                Text("“\(metin)”").font(Yazi.kucuk).foregroundStyle(Renk.metin2)
+                if let metin {
+                    Text("Vızvız doldurdu — kontrol et, sonra Kaydet").font(Yazi.kucukOrta).foregroundStyle(Renk.orman)
+                    Text("“\(metin)”").font(Yazi.kucuk).foregroundStyle(Renk.metin2)
+                } else {
+                    Text("Sesle doldur").font(Yazi.kucukOrta).foregroundStyle(Renk.orman)
+                    Text("Söylediklerin bu forma eklenir").font(Yazi.kucuk).foregroundStyle(Renk.metin2)
+                }
+            }
+            Spacer(minLength: 4)
+            if let sesleEkle {
+                Button(action: sesleEkle) {
+                    Label(metin != nil ? "Ekle" : "Konuş", systemImage: "mic.fill").font(Yazi.kucukOrta).foregroundStyle(Renk.acikBal)
+                        .padding(.horizontal, 12).padding(.vertical, 9).background(Renk.orman2, in: Capsule())
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(10)
@@ -110,6 +125,8 @@ struct MuayeneFormu: View {
     var taslak: ViziltiSonuc? = nil
 
     @State private var tarih = Date()
+    @State private var vzMetin: String?
+    @State private var dinle = false
     @State private var anaGoruldu: Bool? = true
     @State private var yumurta: Bool? = true
     @State private var acikYavru: Bool? = true
@@ -134,7 +151,7 @@ struct MuayeneFormu: View {
     var body: some View {
         NavigationStack {
             Form {
-                if let taslak { Section { ViziltiNotu(metin: taslak.metin) }.listRowInsets(EdgeInsets()).listRowBackground(Color.clear) }
+                Section { ViziltiNotu(metin: vzMetin) { dinle = true } }.listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
                 DatePicker("Tarih", selection: $tarih, displayedComponents: .date)
                 Section("Ana arı") {
                     UcDurum(baslik: "Ana görüldü", evet: "Görüldü", hayir: "Görülmedi", deger: $anaGoruldu)
@@ -194,7 +211,35 @@ struct MuayeneFormu: View {
             }
             .safeAreaInset(edge: .bottom) { BuyukKaydetCubugu { kaydet() } }
         }
+        .overlay {
+            // Formun üstünde (sayfa içinde) Vızvız paneli: söylenen bu forma eklenir
+            if dinle {
+                DinlemePaneli(kapat: { dinle = false; ViziltiSes.paylasilan.dur() }, formaEkle: true) { s, _ in dinle = false; sesleEkle(s); return nil }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: dinle)
         .onAppear(perform: doldur)
+    }
+
+    /// "Sesle ekle": yalnız söylenen alanlar değişir, not sona eklenir.
+    private func sesleEkle(_ s: ViziltiSonuc) {
+        if let v = s.anaGoruldu { anaGoruldu = v }
+        if let v = s.yumurta { yumurta = v }
+        if let v = s.acikYavru { acikYavru = v }
+        if let v = s.kapaliYavru { kapaliYavru = v }
+        if let v = s.yavru { yavru = v }
+        if let v = s.guc { guc = v }
+        if let v = s.besleme { besleme = v }
+        if let v = s.cerceve { cerceve = v }
+        if let v = s.varroaSayi { varroaSayi = String(v) }
+        if let v = s.varroaIslem { varroaIslem = v }
+        if let v = s.varroaIlac { varroaIlac = v }
+        if let g = s.gunSonra { hatirlat = true; hatirlatTarih = Calendar.current.date(byAdding: .day, value: g, to: Date()) ?? Date() }
+        let ek = [s.anaYok ? "Ana yok" : nil, s.not].compactMap { $0 }.joined(separator: ". ")
+        if !ek.isEmpty { not = [not, ek].filter { !$0.isEmpty }.joined(separator: ". ") }
+        vzMetin = [vzMetin, s.metin].compactMap { $0 }.joined(separator: " · ")
+        ViziltiSes.paylasilan.cal("vizilti_doldurdum")
     }
 
     private func cerceveYazi(_ n: Int) -> String { n == 0 ? "—" : String(n) }
@@ -204,6 +249,7 @@ struct MuayeneFormu: View {
         hazir = true
         eskiCerceve = Int(kovan?.frames ?? 0)
         cerceve = taslak?.cerceve ?? eskiCerceve
+        vzMetin = taslak?.metin
         varroaIlac = taslak?.varroaIlac ?? depo.varroaIlaclari.first ?? ""
         guard let t = taslak else { return }
         anaGoruldu = t.anaGoruldu; yumurta = t.yumurta; acikYavru = t.acikYavru; kapaliYavru = t.kapaliYavru
@@ -246,7 +292,7 @@ struct MuayeneFormu: View {
                 v.kovanlar = l
             }
         }
-        if taslak != nil { ViziltiSes.paylasilan.cal("vizilti_kaydettim") }
+        if vzMetin != nil { ViziltiSes.paylasilan.cal("vizilti_kaydettim") }
         kapat()
     }
 }
@@ -260,6 +306,8 @@ struct BalSagimiFormu: View {
 
     @State private var alinan = 0
     @State private var kgElle: String?
+    @State private var vzMetin: String?
+    @State private var dinle = false
     @State private var urunId = ""
     @State private var stogaEkle = true
     @State private var tarih = Date()
@@ -276,7 +324,7 @@ struct BalSagimiFormu: View {
     var body: some View {
         NavigationStack {
             Form {
-                if let taslak { Section { ViziltiNotu(metin: taslak.metin) }.listRowInsets(EdgeInsets()).listRowBackground(Color.clear) }
+                Section { ViziltiNotu(metin: vzMetin) { dinle = true } }.listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
                 Section { kahraman }
                 Section {
                     DatePicker("Tarih", selection: $tarih, displayedComponents: .date)
@@ -336,9 +384,24 @@ struct BalSagimiFormu: View {
             }
             .safeAreaInset(edge: .bottom) { BuyukKaydetCubugu(etkin: alinan > 0 || kg > 0, ipucu: "Önce çerçeve ya da kg gir") { kaydet() } }
         }
+        .overlay {
+            if dinle {
+                DinlemePaneli(kapat: { dinle = false; ViziltiSes.paylasilan.dur() }, formaEkle: true) { s, _ in
+                    dinle = false
+                    if let c = s.balCerceve { alinan = c }
+                    if let k = s.balKg { kgElle = ondalikMetni(k) }
+                    vzMetin = [vzMetin, s.metin].compactMap { $0 }.joined(separator: " · ")
+                    ViziltiSes.paylasilan.cal("vizilti_doldurdum")
+                    return nil
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: dinle)
         .onAppear {
             guard !hazir else { return }
             hazir = true
+            vzMetin = taslak?.metin
             alinan = taslak?.balCerceve ?? 0
             kgElle = taslak?.balKg.map(ondalikMetni)
             let l = urunler
@@ -396,7 +459,7 @@ struct BalSagimiFormu: View {
                 }
             }
         }
-        if taslak != nil { ViziltiSes.paylasilan.cal("vizilti_kaydettim") }
+        if vzMetin != nil { ViziltiSes.paylasilan.cal("vizilti_kaydettim") }
         kapat()
     }
 }
