@@ -59,8 +59,8 @@ struct AraziGorunumu: View {
             ScrollViewReader { kaydir in
             ScrollView([.horizontal, .vertical]) {
                 ZStack(alignment: .topLeading) {
-                    // Tek parça zemin (döşeme yapılmaz → ek yeri çizgisi olmaz).
-                    Image("AraziZemin").resizable().scaledToFill().frame(width: genislik, height: yukseklik).clipped()
+                    // Zemin kaydırılmaz: sabit arka planda (aşağıda) durur, yalnız kovanlar kayar → kenarda ek yeri/kayma görünmez.
+                    Color.clear.frame(width: genislik, height: yukseklik)
                     ForEach(araLar(), id: \.id) { a in
                         RoundedRectangle(cornerRadius: 6).fill(Color(red: 0.55, green: 0.42, blue: 0.25).opacity(0.75))
                             .frame(width: a.w, height: a.h).offset(x: a.x, y: a.y + ust)

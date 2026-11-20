@@ -16,7 +16,7 @@ struct AnaSayfaEkrani: View {
                 HStack { SezonSecici(); Spacer(minLength: 8); KullaniciRozeti() }.padding(.top, 14)
                 GuncellemeBandi().padding(.top, 12)
                 HavaKarti(hava: hava, hata: havaHata, sehir: depo.ayarlar.city).padding(.top, 12)
-                    .onTapGesture { menu.git(.daha) }
+                    .onTapGesture { menu.dahaIstegi = .hava; menu.git(.daha) }
             }
             VStack(spacing: 12) {
                 OzetKartlari()
