@@ -556,47 +556,122 @@ struct ZekatSayfasi: View {
             let z = zekatDurumu(depo.veri, urun: u.v, urunBirimi: b, aralik: aralik)
             return z.hasat > 0 || z.verilen > 0 ? ZekatSatiri(u: u, z: z) : nil
         }
+        // Birim başına toplam (kg, lt, adet… ayrı toplanır)
+        let birimler = Dictionary(grouping: satirlar, by: { $0.u.unit }).sorted { $0.key < $1.key }
+        let kalanlar = birimler.compactMap { b, l -> String? in
+            let t = l.reduce(0) { $0 + $1.z.kalan }
+            return t > 0 ? miktar(t, b) : nil
+        }
+        let verilenler = birimler.compactMap { b, l -> String? in
+            let t = l.reduce(0) { $0 + $1.z.verilen }
+            return t > 0 ? miktar(t, b) : nil
+        }
         NavigationStack {
-            List {
-                if satirlar.isEmpty {
-                    Text("Bu sezon zekata tabi hasat girişi yok.").foregroundStyle(.secondary)
+            ScrollView {
+                VStack(spacing: 12) {
+                    ustKart(kalanlar: kalanlar, verilenler: verilenler, bos: satirlar.isEmpty)
+                    ForEach(satirlar) { urunKarti($0) }
+                    bilgiKarti
                 }
-                ForEach(satirlar) { satir in
-                    let u = satir.u, z = satir.z
-                    Section {
-                        HStack {
-                            UrunGorseli(urun: u, boyut: 40, yaricap: 10)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(u.temizAd).font(Yazi.govdeOrta)
-                                Text("Sezon hasadı \(miktar(z.hasat, u.unit))").font(Yazi.etiket).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text(z.kalan > 0 ? miktar(z.kalan, u.unit) : "Verildi ✓").font(Yazi.nunito(18, .bold))
-                                    .foregroundStyle(z.kalan > 0 ? Renk.metin : Renk.iyi)
-                                Text(z.kalan > 0 ? "verilecek" : "tamamı").font(Yazi.minik).foregroundStyle(.secondary)
-                            }
-                        }
-                        HStack {
-                            Text("Zekat (%10) \(miktar(z.borc, u.unit))")
-                            Spacer()
-                            Text("Verilen \(miktar(z.verilen, u.unit))").foregroundStyle(Renk.iyi)
-                        }
-                        .font(Yazi.kucuk)
-                    }
-                }
-                Section {
-                    Button { zekatVer = true } label: { Label("Zekat verdim, kaydet", systemImage: "moon.stars") }
-                } footer: {
-                    Text("Zekat, sezonda girilen hasadın %10'udur (öşür). Önceki sezondan devreden ve başlangıç stoğu dahil edilmez. Verdiğin zekatı ödeme türü \"Zekat\" olan bir satış olarak kaydet; stoktan düşer, burada verilen olarak görünür.")
-                }
+                .padding(.horizontal, Olcu.kenar).padding(.vertical, 8)
             }
             .navigationTitle("Zekat")
             .formArkaplani()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Tamam") { kapat() } } }
+            .safeAreaInset(edge: .bottom) {
+                BuyukKaydetCubugu(metin: "Zekat verdim, kaydet") { zekatVer = true }
+            }
             .sheet(isPresented: $zekatVer) { SatisFormu(satisId: nil, varsayilanOdeme: "zekat") }
         }
+    }
+
+    private let renkZekat = Color(red: 0.18, green: 0.55, blue: 0.55)
+
+    /// Koyu yeşil üst kart: bu sezon verilecek toplam ya da "tamamı verildi".
+    private func ustKart(kalanlar: [String], verilenler: [String], bos: Bool) -> some View {
+        let tamam = !bos && kalanlar.isEmpty
+        return HStack(spacing: 14) {
+            Image(systemName: tamam ? "checkmark.seal.fill" : "moon.stars.fill")
+                .font(.system(size: 28, weight: .semibold)).foregroundStyle(Renk.ormanKoyu)
+                .frame(width: 60, height: 60)
+                .background(LinearGradient(colors: [Renk.acikBal, Renk.bal], startPoint: .top, endPoint: .bottom), in: Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.5), lineWidth: 1.5))
+                .shadow(color: Renk.bal.opacity(0.5), radius: 8)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(bos ? "Bu sezon" : tamam ? "Bu sezonun zekatı" : "Bu sezon verilecek zekat")
+                    .font(Yazi.kucuk).foregroundStyle(Color(white: 0.85))
+                Text(bos ? "Hasat girişi yok" : tamam ? "Tamamı verildi" : kalanlar.joined(separator: " · "))
+                    .font(Yazi.nunito(24, .heavy)).foregroundStyle(tamam ? Renk.acikBal : Renk.bal)
+                    .lineLimit(2).minimumScaleFactor(0.6)
+                Text(verilenler.isEmpty ? "Sezon hasadının %10'u (öşür)" : "Verilen: " + verilenler.joined(separator: " · "))
+                    .font(Yazi.minik).foregroundStyle(Color(white: 0.8)).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 104, alignment: .leading)
+        .background(LinearGradient(colors: [Renk.orman2, Renk.ormanKoyu], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Renk.bal.opacity(0.5)))
+        .shadow(color: .black.opacity(0.25), radius: 10, y: 5)
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Ürün kartı: hasat, %10 borç, verilen; ilerleme çubuğu verilen/borç.
+    private func urunKarti(_ s: ZekatSatiri) -> some View {
+        let u = s.u, z = s.z
+        let oran = z.borc > 0 ? min(1, z.verilen / z.borc) : 1
+        return DogaKart {
+            HStack(spacing: 12) {
+                UrunGorseli(urun: u, boyut: 56, yaricap: 14).padding(.leading, 12).padding(.top, 4)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(u.temizAd).font(Yazi.nunito(18, .bold)).foregroundStyle(Renk.metin).lineLimit(1)
+                    Text("Sezon hasadı \(miktar(z.hasat, u.unit))").font(Yazi.kucuk).foregroundStyle(Renk.metin2).lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                VStack(alignment: .trailing, spacing: 1) {
+                    if z.kalan > 0 {
+                        Text(miktar(z.kalan, u.unit)).font(Yazi.nunito(20, .heavy)).foregroundStyle(Renk.orman)
+                        Text("verilecek").font(Yazi.minik).foregroundStyle(Renk.metin3)
+                    } else {
+                        Label("Verildi", systemImage: "checkmark.circle.fill").font(Yazi.nunito(16, .heavy)).foregroundStyle(Renk.iyi)
+                        Text("tamamı").font(Yazi.minik).foregroundStyle(Renk.metin3)
+                    }
+                }
+            }
+            GeometryReader { g in
+                Capsule().fill(z.kalan > 0 ? renkZekat : Renk.iyi).frame(width: max(oran > 0 ? 14 : 0, g.size.width * oran))
+            }
+            .frame(height: 12)
+            .background(Renk.krem2)
+            .clipShape(Capsule())
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 3).fill(Renk.krem2).frame(width: 9, height: 9)
+                Text("Zekat (%10)").font(Yazi.kucuk).foregroundStyle(Renk.metin2)
+                Spacer()
+                Text(miktar(z.borc, u.unit)).font(Yazi.kucukOrta).foregroundStyle(Renk.metin)
+            }
+            HStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 3).fill(z.kalan > 0 ? renkZekat : Renk.iyi).frame(width: 9, height: 9)
+                Text("Verilen").font(Yazi.kucuk).foregroundStyle(Renk.metin2)
+                Spacer()
+                Text(miktar(z.verilen, u.unit)).font(Yazi.kucukOrta).foregroundStyle(Renk.metin)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var bilgiKarti: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "info.circle.fill").font(.system(size: 18)).foregroundStyle(Renk.bal)
+            Text("Zekat, sezonda girilen hasadın %10'udur (öşür). Önceki sezondan devreden ve başlangıç stoğu dahil edilmez. Verdiğin zekatı alttaki düğmeyle kaydet: ödeme türü \"Zekat\" olan bir satış açılır, stoktan düşer ve burada verilen olarak görünür.")
+                .font(Yazi.kucuk).foregroundStyle(Renk.metin2).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Renk.kart.opacity(0.92), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Renk.krem2))
     }
 }
 

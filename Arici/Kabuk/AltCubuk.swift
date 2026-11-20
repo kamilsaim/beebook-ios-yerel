@@ -153,19 +153,22 @@ struct AltCubuk: View {
                     }
                 }
 
-                // Arı
+                // Arı — dokunma alanı ofsetten ÖNCE tanımlanmalı: sonra konunca alan arıyla gitmiyor,
+                // çubuğun sol köşesinde (Ana Sayfa sekmesinin üstünde) kalıyordu.
                 Vizilti(cirpiyor: cirpiyor)
                     .frame(width: 40, height: 60)
                     .scaleEffect(x: solaBakiyor ? -1 : 1, y: 1)
                     .rotationEffect(.degrees(ucuyor ? (solaBakiyor ? -8 : 8) : 0))
                     .scaleEffect(ince ? 0.82 : 1)
                     .scaleEffect(x: 1, y: konuyor ? 0.94 : 1, anchor: .bottom)
-                    .offset(x: ariX - 20, y: (ince ? -46 : -54) + (ucuyor ? -14 : 0))
-                    .shadow(color: .black.opacity(0.4), radius: 3, y: 3)
+                    .frame(width: 64, height: 72) // parmak için geniş alan
                     .contentShape(Rectangle())
-                    .onTapGesture { durum.hizliMenu = true }
+                    .onTapGesture { hizliMenuyuAc() }
+                    .onLongPressGesture(minimumDuration: 0.35) { hizliMenuyuAc() }
                     .accessibilityLabel("Hızlı ekle")
                     .accessibilityAddTraits(.isButton)
+                    .offset(x: ariX - 32, y: (ince ? -46 : -54) - 6 + (ucuyor ? -14 : 0))
+                    .shadow(color: .black.opacity(0.4), radius: 3, y: 3)
             }
             .onAppear {
                 olcu = w
@@ -219,6 +222,11 @@ struct AltCubuk: View {
         .buttonStyle(.plain)
         .accessibilityLabel(s.ad)
         .accessibilityAddTraits(secili ? .isSelected : [])
+    }
+
+    private func hizliMenuyuAc() {
+        guard !durum.hizliMenu else { return }
+        durum.hizliMenu = true
     }
 
     private func uc(from: CGFloat, to: CGFloat, sola: Bool) {
