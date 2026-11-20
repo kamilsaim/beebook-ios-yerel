@@ -40,21 +40,23 @@ private func ondalikMetni(_ d: Double) -> String {
 }
 
 /// Formun altında büyük, başparmakla rahat basılan Kaydet.
+/// Etkin: koyu yeşil zemin + bal rengi yazı (krem formda ve bal tonlu kartlarda net); pasif: beyaz zemin + ne eksik olduğu.
 struct BuyukKaydetCubugu: View {
     var metin = "Kaydet"
     var etkin = true
+    var ipucu: String? = nil
     let kaydet: () -> Void
     var body: some View {
         Button(action: kaydet) {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark").font(.system(size: 20, weight: .bold))
-                Text(metin).font(Yazi.nunito(19, .heavy))
+                Text(etkin || ipucu == nil ? metin : ipucu!).font(etkin || ipucu == nil ? Yazi.nunito(19, .heavy) : Yazi.govdeOrta).lineLimit(1)
             }
-            .foregroundStyle(etkin ? Renk.ormanKoyu : Renk.metin3)
+            .foregroundStyle(etkin ? Renk.acikBal : Renk.metin2)
             .frame(maxWidth: .infinity, minHeight: 58)
-            .background(etkin ? Renk.bal : Renk.krem2, in: Capsule())
-            .overlay(Capsule().strokeBorder(etkin ? Renk.acikBal : Renk.krem2))
-            .shadow(color: .black.opacity(etkin ? 0.25 : 0), radius: 8, y: 3)
+            .background(etkin ? AnyShapeStyle(LinearGradient(colors: [Renk.orman2, Renk.ormanKoyu], startPoint: .top, endPoint: .bottom)) : AnyShapeStyle(Color.white), in: Capsule())
+            .overlay(Capsule().strokeBorder(etkin ? Renk.bal : Renk.metin3.opacity(0.5), lineWidth: etkin ? 1.5 : 1))
+            .shadow(color: .black.opacity(etkin ? 0.3 : 0), radius: 10, y: 3)
         }
         .buttonStyle(.plain)
         .disabled(!etkin)
@@ -146,9 +148,7 @@ struct MuayeneFormu: View {
                         Text("Düzenli").tag("duzenli"); Text("Seyrek").tag("seyrek"); Text("Yok").tag("yok")
                     }
                     .pickerStyle(.segmented)
-                    Stepper(value: Binding(get: { guc ?? 3 }, set: { guc = $0 }), in: 1...5) {
-                        if let g = guc { Text("Güç: \(g)/5 · \(g >= 4 ? "güçlü" : g == 3 ? "orta" : "zayıf")") } else { Text("Güç: —") }
-                    }
+                    CipSecici(baslik: guc == nil ? "Güç: — (Vızıltı anlamadı)" : "Güç", secenekler: [(1, "1 Çok zayıf"), (2, "2 Zayıf"), (3, "3 Orta"), (4, "4 Güçlü"), (5, "5 Çok güçlü")], secili: guc) { guc = $0 }
                     Stepper(value: $cerceve, in: 0...40) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(cerceve != eskiCerceve ? "Kovan çerçevesi: \(cerceveYazi(eskiCerceve)) → \(cerceveYazi(cerceve))" : "Kovan çerçevesi: \(cerceveYazi(cerceve))")
@@ -334,7 +334,7 @@ struct BalSagimiFormu: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Kaydet") { kaydet() }.disabled(alinan == 0 && kg == 0) }
             }
-            .safeAreaInset(edge: .bottom) { BuyukKaydetCubugu(etkin: alinan > 0 || kg > 0) { kaydet() } }
+            .safeAreaInset(edge: .bottom) { BuyukKaydetCubugu(etkin: alinan > 0 || kg > 0, ipucu: "Önce çerçeve ya da kg gir") { kaydet() } }
         }
         .onAppear {
             guard !hazir else { return }

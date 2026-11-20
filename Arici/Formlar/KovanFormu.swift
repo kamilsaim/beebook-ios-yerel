@@ -35,32 +35,33 @@ struct KovanFormu: View {
                         TextField("Kovan no", text: $num).keyboardType(.numbersAndPunctuation)
                         Button { tarayici = true } label: { Image(systemName: "barcode.viewfinder") }
                     }
-                    Picker("Tip", selection: $tip) { ForEach(tipListesi, id: \.self) { Text($0) } }
-                    Picker("Ana arı", selection: $anaDurum) { ForEach(durumlar, id: \.0) { Text($0.1).tag($0.0) } }
+                    CipSecici(baslik: "Tip", secenekler: tipListesi.map { ($0, $0) }, secili: tip) { tip = $0 }
+                    CipSecici(baslik: "Ana arı", secenekler: durumlar, secili: anaDurum, nokta: { $0 == "empty" ? Color(white: 0.6) : KovanRenkAyari.isimaRengi($0) }) { anaDurum = $0 }
                     if KovanRenkAyari.durumlarAcik {
-                        Picker("Renk durumu", selection: $isaret) {
-                            Text("Yok").tag("")
-                            ForEach(KovanRenkAyari.durumlar) { r in Text(r.name).tag(r.id) }
-                        }
+                        CipSecici(baslik: "Renk durumu", secenekler: [("", "Yok")] + KovanRenkAyari.durumlar.map { ($0.id, $0.name) }, secili: isaret,
+                                  nokta: { id in KovanRenkAyari.durumlar.first { $0.id == id }?.colors.first.flatMap { RenkPaleti.renk($0) } }) { isaret = $0 }
                     }
                 }
                 if anaDurum != "empty" {
                     Section(header: Label("Ana arı", systemImage: "crown")) {
-                        Picker("Irk", selection: $irk) { Text("—").tag(""); ForEach(irkListesi, id: \.self) { Text($0) } }
-                        Picker("Kuşak", selection: $kusak) {
-                            Text("—").tag("")
-                            ForEach(kusakSecenekleri + (kusak.isEmpty || kusakSecenekleri.contains(kusak) ? [] : [kusak]), id: \.self) { Text($0) }
+                        CipSecici(baslik: "Irk", secenekler: irkListesi.map { ($0, $0) }, secili: irk) { irk = irk == $0 ? "" : $0 }
+                        CipSecici(baslik: "Kuşak", secenekler: (kusakSecenekleri + (kusak.isEmpty || kusakSecenekleri.contains(kusak) ? [] : [kusak])).map { ($0, $0) }, secili: kusak) { kusak = kusak == $0 ? "" : $0 }
+                        // Son 5 yıl tek dokunuşla; renk yıl rengine göre kendiliğinden
+                        let buYil = Calendar.current.component(.year, from: Date())
+                        let yillar = Array((buYil - 4)...buYil).reversed().map(String.init) + (Int(yil).map { $0 < buYil - 4 } == true ? [yil] : [])
+                        CipSecici(baslik: "Ana yılı", secenekler: yillar.map { ($0, $0) }, secili: yil, nokta: { Int($0).map { Renk.ana(anaRengi(yil: $0)) } }) {
+                            yil = yil == $0 ? "" : $0
+                            if let n = Int(yil) { renk = anaRengi(yil: n) }
                         }
-                        YilAdim(etiket: "Ana yılı", yil: $yil)
-                            .onChange(of: yil) { _, y in if let n = Int(y), y.count == 4 { renk = anaRengi(yil: n) } }
                         RenkSecici(secenekler: renkler, secili: $renk)
                     }
                     Section(header: Label("Koloni", systemImage: "hexagon")) {
-                        Stepper("Güç: \(guc)/5", value: $guc, in: 1...5)
+                        CipSecici(baslik: "Güç", secenekler: [(1, "1 Çok zayıf"), (2, "2 Zayıf"), (3, "3 Orta"), (4, "4 Güçlü"), (5, "5 Çok güçlü")], secili: guc) { guc = $0 }
                         Stepper(value: Binding(get: { Int(cerceve) ?? 0 }, set: { cerceve = $0 > 0 ? String($0) : ""; kat = otomatikKat($0) }), in: 0...40) {
                             HStack { Text("Çerçeve"); Spacer(); Text(cerceve.isEmpty ? "—" : cerceve).font(Yazi.nunito(17, .bold)).foregroundStyle(Renk.orman2) }
                         }
-                        Stepper("Kat: \(kat)", value: $kat, in: 1...4)
+                        CipSecici(baslik: nil, secenekler: [5, 8, 10, 12, 16, 20, 24].map { ($0, "\($0)") }, secili: Int(cerceve)) { cerceve = String($0); kat = otomatikKat($0) }
+                        CipSecici(baslik: "Kat", secenekler: (1...4).map { ($0, "\($0) kat") }, secili: kat) { kat = $0 }
                     }
                 }
                 Section(header: Label("Notlar", systemImage: "note.text")) { TextField("Not", text: $not, axis: .vertical) }
@@ -76,6 +77,9 @@ struct KovanFormu: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Kaydet") { kaydet(); kapat() }.disabled(num.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
+            }
+            .safeAreaInset(edge: .bottom) {
+                BuyukKaydetCubugu(etkin: !num.trimmingCharacters(in: .whitespaces).isEmpty, ipucu: "Önce kovan no yaz") { kaydet(); kapat() }
             }
             .confirmationDialog("Kovan \(num) silinsin mi?", isPresented: $silOnay, titleVisibility: .visible) {
                 Button("Sil", role: .destructive) { sil(); kapat() }
@@ -182,12 +186,13 @@ struct TopluKovanFormu: View {
                     Stepper("Adet: \(adet)", value: $adet, in: 1...200)
                 }
                 Section {
-                    Picker("Tip", selection: $tip) { ForEach(depo.kovanTipleri, id: \.self) { Text($0) } }
-                    Picker("Ana arı", selection: $anaDurum) {
-                        Text("Ana var").tag("yes"); Text("Ana yok").tag("no"); Text("Bakire").tag("bakire"); Text("Bilinmiyor").tag("unknown"); Text("Arısız").tag("empty")
+                    CipSecici(baslik: "Tip", secenekler: depo.kovanTipleri.map { ($0, $0) }, secili: tip) { tip = $0 }
+                    CipSecici(baslik: "Ana arı", secenekler: [("yes", "Ana var"), ("no", "Ana yok"), ("bakire", "Bakire"), ("unknown", "Bilinmiyor"), ("empty", "Arısız")], secili: anaDurum,
+                              nokta: { $0 == "empty" ? Color(white: 0.6) : KovanRenkAyari.isimaRengi($0) }) { anaDurum = $0 }
+                    if anaDurum != "empty" {
+                        CipSecici(baslik: "Irk", secenekler: depo.irklar.map { ($0, $0) }, secili: irk) { irk = irk == $0 ? "" : $0 }
+                        CipSecici(baslik: "Güç", secenekler: [(1, "1 Çok zayıf"), (2, "2 Zayıf"), (3, "3 Orta"), (4, "4 Güçlü"), (5, "5 Çok güçlü")], secili: guc) { guc = $0 }
                     }
-                    Picker("Irk", selection: $irk) { Text("—").tag(""); ForEach(depo.irklar, id: \.self) { Text($0) } }
-                    Stepper("Güç: \(guc)/5", value: $guc, in: 1...5)
                 }
                 if let b = Int(baslangic) { Section { Text("Kovan \(b) – \(b + adet - 1) eklenecek").foregroundStyle(.secondary) } }
             }
@@ -197,6 +202,9 @@ struct TopluKovanFormu: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
                 ToolbarItem(placement: .confirmationAction) { Button("Ekle") { ekle(); kapat() }.disabled(Int(baslangic) == nil) }
+            }
+            .safeAreaInset(edge: .bottom) {
+                BuyukKaydetCubugu(metin: "Ekle", etkin: Int(baslangic) != nil, ipucu: "Önce başlangıç no yaz") { ekle(); kapat() }
             }
             .onAppear {
                 let enBuyuk = depo.veri.kovanlar.map(\.numara).filter { $0 != Int.max }.max() ?? 0

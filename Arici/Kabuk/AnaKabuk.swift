@@ -25,6 +25,8 @@ struct AnaKabuk: View {
     }()
 
     var body: some View {
+        // Vızıltı formu: hedef gövdede okunur ki değişince sheet açılsın (Binding kapanışındaki okuma izlenmez)
+        let _ = ViziltiAyari.paylasilan.hedef?.id
         ZStack(alignment: .bottom) {
             Renk.orman.ignoresSafeArea()
             ZStack {
@@ -40,7 +42,7 @@ struct AnaKabuk: View {
             ViziltiKatmani()
         }
         .environment(menu)
-        .sheet(item: Binding(get: { ViziltiAyari.paylasilan.hedef }, set: { ViziltiAyari.paylasilan.hedef = $0 })) { ViziltiHedefFormu(hedef: $0) }
+        .sheet(item: Binding(get: { ViziltiAyari.paylasilan.araziAcik ? nil : ViziltiAyari.paylasilan.hedef }, set: { ViziltiAyari.paylasilan.hedef = $0 })) { ViziltiHedefFormu(hedef: $0) }
         .preferredColorScheme(.dark)
         .onAppear(perform: rozetleriGuncelle)
         .onChange(of: depo.veri) { _, _ in rozetleriGuncelle() }
@@ -59,7 +61,7 @@ struct AnaKabuk: View {
         }
         // Bildirim izni: açılışta değil, ilk tarihli kayıt (aktif ana arı serisi / ileri tarihli iş) olunca bir kez
         .task(id: tarihliVar) {
-            guard tarihliVar, Hatirlatici.acik, !Hatirlatici.izinSoruldu, await Hatirlatici.izinDurumu() == .notDetermined else { return }
+            guard tarihliVar, !Baslatma.ornekVeri, Hatirlatici.acik, !Hatirlatici.izinSoruldu, await Hatirlatici.izinDurumu() == .notDetermined else { return }
             await Hatirlatici.izinIste()
             await Hatirlatici.planla(depo.veri)
         }

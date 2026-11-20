@@ -120,7 +120,7 @@ struct KovanlarEkrani: View {
         case "yasli": k = k.filter(\.yasliAna)
         case "arisiz": k = k.filter(\.arisiz)
         default:
-            if filtre.hasPrefix("irk:") { k = k.filter { $0.race == String(filtre.dropFirst(4)) } }
+            if filtre.hasPrefix("irk:") { k = k.filter { !$0.arisiz && $0.race == String(filtre.dropFirst(4)) } }
             if filtre.hasPrefix("tip:") { k = k.filter { $0.type == String(filtre.dropFirst(4)) } }
         }
         let a = arama.trimmingCharacters(in: .whitespaces).lowercased()
@@ -154,7 +154,7 @@ struct KovanlarEkrani: View {
                     cip("bakire", "Bakire")
                     cip("yasli", "Yaşlı ana")
                     cip("arisiz", "Arısız", nokta: Color(white: 0.7))
-                    ForEach(Array(Set(hepsi.compactMap(\.race)).filter { !$0.isEmpty }).sorted(), id: \.self) { cip("irk:\($0)", $0) }
+                    ForEach(Array(Set(hepsi.filter { !$0.arisiz }.compactMap(\.race)).filter { !$0.isEmpty }).sorted(), id: \.self) { cip("irk:\($0)", $0) }
                     ForEach(Array(Set(hepsi.compactMap(\.type)).filter { !$0.isEmpty }).sorted(), id: \.self) { cip("tip:\($0)", $0) }
                 }
             }

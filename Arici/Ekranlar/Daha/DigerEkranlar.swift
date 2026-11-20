@@ -773,6 +773,9 @@ struct AyarlarEkrani: View {
                 .sheet(isPresented: $renkler) { KovanRenkleriSayfasi() }
             }
             BildirimAyarlariBolumu()
+            Section(header: Label("Arazi işaretleri", systemImage: "map"), footer: Text("Arazi ekranında kovanların köşesindeki işaretler. Arazide (i) düğmesiyle de görünür.")) {
+                AraziIsaretAciklamasi(koyu: false).padding(.vertical, 4)
+            }
             ViziltiAyarlariBolumu()
             VarroaIlaclariBolumu()
             Section(header: Label("Arı ırkları", systemImage: "ladybug"), footer: Text("Silmek için sola kaydır.")) {

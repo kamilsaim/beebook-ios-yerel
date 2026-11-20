@@ -45,6 +45,10 @@ final class ViziltiAyari {
     var deneme: String?
     /// Açık kovan detayı (numarasız cümle o kovana gider).
     var acikKovanId: String?
+    /// Arazi turundaki kovan (numarasız cümle o kovana gider; detaydan önce).
+    var turKovanId: String?
+    /// Arazi tam ekranı açık: Vızıltı formunu kabuk değil arazi açar.
+    var araziAcik = false
     /// Kabuğun açacağı form.
     var hedef: ViziltiHedef?
 
@@ -244,12 +248,14 @@ final class SesTanima {
 /// Kabuğun en üstüne konur: yüzen balon + dinleme paneli + formu açma.
 struct ViziltiKatmani: View {
     @Environment(VeriDeposu.self) private var depo
+    /// Yüzen balon gösterilsin mi (arazide yalnız panel).
+    var balon = true
     private var ayar: ViziltiAyari { .paylasilan }
     @State private var panel = false
 
     var body: some View {
         ZStack {
-            if ayar.balonAcik && !panel { YuzenBalon { panel = true } }
+            if balon && ayar.balonAcik && !panel { YuzenBalon { panel = true } }
             if panel {
                 DinlemePaneli(kapat: { panel = false; ViziltiSes.paylasilan.dur() }) { s, secilen in
                     if let secilen { panel = false; formuAc(s, secilen); return nil }
@@ -276,7 +282,7 @@ struct ViziltiKatmani: View {
     private func kovanCoz(_ s: ViziltiSonuc) -> Kovan? {
         let l = viziltiKovanBul(s.kovanNo, depo.veri.kovanlar)
         if l.count == 1 { return l[0] }
-        if s.kovanNo == nil, let id = ayar.acikKovanId { return depo.veri.kovanlar.first { $0.id == id } }
+        if s.kovanNo == nil, let id = ayar.turKovanId ?? ayar.acikKovanId { return depo.veri.kovanlar.first { $0.id == id } }
         return nil
     }
 
