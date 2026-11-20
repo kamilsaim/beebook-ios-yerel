@@ -73,6 +73,9 @@ struct DahaEkrani: View {
                 }
                 .padding(.horizontal, Olcu.kenar)
                 .padding(.top, 14)
+                ViziltiKilavuzKarti()
+                    .padding(.horizontal, Olcu.kenar)
+                    .padding(.top, 18)
             }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: DahaSayfa.self) { s in

@@ -36,8 +36,11 @@ struct AnaKabuk: View {
                 }
             }
             AltCubuk(durum: menu)
+            // Vızıltı: yüzen balon + dinleme paneli (alt menünün de üstünde)
+            ViziltiKatmani()
         }
         .environment(menu)
+        .sheet(item: Binding(get: { ViziltiAyari.paylasilan.hedef }, set: { ViziltiAyari.paylasilan.hedef = $0 })) { ViziltiHedefFormu(hedef: $0) }
         .preferredColorScheme(.dark)
         .onAppear(perform: rozetleriGuncelle)
         .onChange(of: depo.veri) { _, _ in rozetleriGuncelle() }

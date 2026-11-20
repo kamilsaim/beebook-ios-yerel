@@ -9,6 +9,7 @@ struct KovanDetayi: View {
     let kovanId: String
     @State private var duzenle = false
     @State private var muayene = false
+    @State private var balSagimi = false
     @State private var tumMuayeneler = false
 
     var body: some View {
@@ -40,6 +41,10 @@ struct KovanDetayi: View {
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $duzenle) { KovanFormu(kovanId: k.id) }
             .sheet(isPresented: $muayene) { MuayeneFormu(kovanId: k.id) }
+            .sheet(isPresented: $balSagimi) { BalSagimiFormu(kovanId: k.id) }
+            // Vızıltı'ya numarasız söylenen cümle bu kovana gider
+            .onAppear { ViziltiAyari.paylasilan.acikKovanId = k.id }
+            .onDisappear { if ViziltiAyari.paylasilan.acikKovanId == k.id { ViziltiAyari.paylasilan.acikKovanId = nil } }
         } else {
             BosDurum(simge: "archivebox", baslik: "Kovan silindi").onAppear { geri() }
         }
@@ -240,16 +245,18 @@ struct KovanDetayi: View {
     private func eylemler(_ k: Kovan) -> some View {
         HStack(spacing: 8) {
             eylem("doc.badge.plus", "Kontrol ekle") { muayene = true }
+            eylem("UrunSagim", "Bal sağımı", gorsel: true) { balSagimi = true }.disabled(k.arisiz).opacity(k.arisiz ? 0.45 : 1)
             eylem("plus.square", "Kat ekle") { katDegistir(k, 1) }.disabled(k.katSayisi >= 4).opacity(k.katSayisi >= 4 ? 0.45 : 1)
             eylem("minus.square", "Kat çıkar") { katDegistir(k, -1) }.disabled(k.katSayisi <= 1).opacity(k.katSayisi <= 1 ? 0.45 : 1)
             eylem("pencil", "Düzenle") { duzenle = true }
         }
     }
 
-    private func eylem(_ simge: String, _ ad: String, _ f: @escaping () -> Void) -> some View {
+    private func eylem(_ simge: String, _ ad: String, gorsel: Bool = false, _ f: @escaping () -> Void) -> some View {
         Button(action: f) {
             VStack(spacing: 6) {
-                Image(systemName: simge).font(.system(size: 22, weight: .medium)).foregroundStyle(Renk.bal)
+                if gorsel { Image(simge).resizable().scaledToFit().frame(width: 30, height: 26) }
+                else { Image(systemName: simge).font(.system(size: 22, weight: .medium)).foregroundStyle(Renk.bal) }
                 Text(ad).font(Yazi.etiket).foregroundStyle(Renk.krem).lineLimit(1).minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity, minHeight: 74)
@@ -288,78 +295,6 @@ struct KoloniGostergesi: View {
                 }
                 .position(x: w / 2, y: h - 18)
             }
-        }
-    }
-}
-
-func muayeneOzeti(_ m: Muayene) -> String {
-    var p: [String] = []
-    if let q = m.queenSeen { p.append(q ? "Ana görüldü" : "Ana görülmedi") }
-    if m.eggs == true { p.append("Yumurta var") }
-    if let b = m.brood { p.append("Yavru: " + (["duzenli": "düzenli", "seyrek": "seyrek", "yok": "yok"][b] ?? b)) }
-    if let s = m.strength, let g = Int(s) { p.append("Güç: \(g >= 4 ? "güçlü" : g == 3 ? "orta" : "zayıf")") }
-    if let f = m.feeding, !f.isEmpty { p.append("Besleme: \(f)") }
-    return p.joined(separator: " · ")
-}
-
-/// Muayene formu (v2.7.0 `inspections`). Güç kovanın 1–5 ölçeğiyle; kovanın gücünü de günceller.
-struct MuayeneFormu: View {
-    @Environment(VeriDeposu.self) private var depo
-    @Environment(\.dismiss) private var kapat
-    let kovanId: String
-    @State private var tarih = Date()
-    @State private var anaGoruldu = true
-    @State private var yumurta = true
-    @State private var yavru = "duzenli"
-    @State private var guc = 4
-    @State private var besleme = ""
-    @State private var not = ""
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                DatePicker("Tarih", selection: $tarih, displayedComponents: .date)
-                Section("Ana arı") {
-                    Toggle("Ana görüldü", isOn: $anaGoruldu)
-                    Toggle("Yumurta / genç larva", isOn: $yumurta)
-                }
-                Section("Koloni") {
-                    Picker("Yavru", selection: $yavru) {
-                        Text("Düzenli").tag("duzenli"); Text("Seyrek").tag("seyrek"); Text("Yok").tag("yok")
-                    }
-                    .pickerStyle(.segmented)
-                    Stepper("Güç: \(guc)/5 · \(guc >= 4 ? "güçlü" : guc == 3 ? "orta" : "zayıf")", value: $guc, in: 1...5)
-                }
-                Section("Besleme ve not") {
-                    TextField("Besleme (ör. 1 lt şurup)", text: $besleme)
-                    TextField("Not", text: $not, axis: .vertical)
-                }
-            }
-            .navigationTitle("Muayene")
-            .formArkaplani()
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Vazgeç") { kapat() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Kaydet") { kaydet(); kapat() } }
-            }
-        }
-    }
-
-    private func kaydet() {
-        let g = String(guc)
-        depo.degistir { v in
-            var m = Muayene(["id": .metin(yeniKimlik())])
-            m.hiveId = kovanId
-            m.date = bugunISO(tarih)
-            m.queenSeen = anaGoruldu
-            m.eggs = yumurta
-            m.brood = yavru
-            m.strength = g
-            m.feeding = besleme.isEmpty ? nil : besleme
-            m.note = not.isEmpty ? nil : not
-            v.muayeneler = v.muayeneler + [m]
-            var l = v.kovanlar
-            if let i = l.firstIndex(where: { $0.id == kovanId }) { l[i].strength = g; v.kovanlar = l }
         }
     }
 }

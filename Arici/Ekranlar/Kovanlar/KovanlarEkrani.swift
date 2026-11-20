@@ -23,6 +23,7 @@ struct KovanlarEkrani: View {
     @State private var yeniForm = false
     @State private var topluForm = false
     @State private var tarayici = false
+    @State private var tasimaHedefi: String?
 
     var body: some View {
         NavigationStack(path: $yol) {
@@ -106,7 +107,7 @@ struct KovanlarEkrani: View {
     }
 
     private var tumKovanlar: [Kovan] {
-        depo.veri.kovanlar.sorted { a, b in a.starred != b.starred ? a.starred : (a.numara != b.numara ? a.numara < b.numara : a.num < b.num) }
+        KovanSirasi.sirala(depo.veri.kovanlar, depo.ayarlar.hiveOrder)
     }
 
     private var suzulmus: [Kovan] {
@@ -167,16 +168,29 @@ struct KovanlarEkrani: View {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
                     ForEach(k, id: \.id) { kv in
                         NavigationLink(value: kv.id) { KovanIzgaraHucresi(kovan: kv) }.buttonStyle(.plain).contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .modifier(KovanTasima(kovan: kv, gorunen: k, hedef: $tasimaHedefi) { sira in siraKaydet(sira) })
                     }
                 }
             } else {
                 let sonMuayene = sonMuayeneler
+                if depo.ayarlar.hiveOrder == nil && k.count > 1 {
+                    Text("İpucu: kartı basılı tutup sürükleyerek sırasını değiştirebilirsin.").font(Yazi.kucuk).foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.8), radius: 3).frame(maxWidth: .infinity, alignment: .leading)
+                }
                 LazyVStack(spacing: 12) {
                     ForEach(k, id: \.id) { kv in
                         NavigationLink(value: kv.id) { KovanSatiri(kovan: kv, sonMuayene: sonMuayene[kv.id]) }.buttonStyle(.plain)
+                            .modifier(KovanTasima(kovan: kv, gorunen: k, hedef: $tasimaHedefi) { sira in siraKaydet(sira) })
                     }
                 }
             }
+        }
+    }
+
+    private func siraKaydet(_ gorunenYeni: [String]) {
+        let tum = tumKovanlar
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+            depo.ayarDegistir { $0.hiveOrder = KovanSirasi.yerlestir(tum, gorunenYeni) }
         }
     }
 
@@ -418,5 +432,41 @@ extension View {
             .shadow(color: (isik ?? .black).opacity(isik == nil ? 0.2 : 0.7), radius: isik == nil ? 6 : (kalin ? 16 : 13))
             .shadow(color: .black.opacity(0.15), radius: 5, y: 4)
             .foregroundStyle(kovan.arisiz ? Color(white: 0.3) : Renk.metin)
+    }
+}
+
+/// Kovan kartını basılı tutup başka kartın üstüne bırakınca sıra değişir (Android `SiralanabilirKovanlar` karşılığı).
+/// Yıldızlı kovan yalnız yıldızlıların, yıldızsız yalnız yıldızsızların arasında yer değiştirir.
+struct KovanTasima: ViewModifier {
+    let kovan: Kovan
+    let gorunen: [Kovan]
+    @Binding var hedef: String?
+    let birak: ([String]) -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if hedef == kovan.id {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Renk.acikBal, lineWidth: 3)
+                        .shadow(color: Renk.bal.opacity(0.8), radius: 8)
+                        .allowsHitTesting(false)
+                }
+            }
+            .draggable(kovan.id) {
+                Text("Kovan \(kovan.num)").font(Yazi.govdeOrta).foregroundStyle(Renk.ormanKoyu)
+                    .padding(.horizontal, 16).padding(.vertical, 10).background(Renk.bal, in: Capsule())
+            }
+            .dropDestination(for: String.self) { ogeler, _ in
+                hedef = nil
+                guard let id = ogeler.first, id != kovan.id,
+                      let tasinan = gorunen.first(where: { $0.id == id }), tasinan.starred == kovan.starred,
+                      let kimden = gorunen.firstIndex(where: { $0.id == id }),
+                      let kime = gorunen.firstIndex(where: { $0.id == kovan.id }) else { return false }
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                birak(KovanSirasi.tasi(gorunen.map(\.id), kimden, kime))
+                return true
+            } isTargeted: { ustunde in
+                if ustunde { hedef = kovan.id } else if hedef == kovan.id { hedef = nil }
+            }
     }
 }

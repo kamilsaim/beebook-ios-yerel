@@ -57,7 +57,7 @@ struct KovanFormu: View {
                     }
                     Section(header: Label("Koloni", systemImage: "hexagon")) {
                         Stepper("Güç: \(guc)/5", value: $guc, in: 1...5)
-                        Stepper(value: Binding(get: { Int(cerceve) ?? 0 }, set: { cerceve = $0 > 0 ? String($0) : "" }), in: 0...40) {
+                        Stepper(value: Binding(get: { Int(cerceve) ?? 0 }, set: { cerceve = $0 > 0 ? String($0) : ""; kat = otomatikKat($0) }), in: 0...40) {
                             HStack { Text("Çerçeve"); Spacer(); Text(cerceve.isEmpty ? "—" : cerceve).font(Yazi.nunito(17, .bold)).foregroundStyle(Renk.orman2) }
                         }
                         Stepper("Kat: \(kat)", value: $kat, in: 1...4)

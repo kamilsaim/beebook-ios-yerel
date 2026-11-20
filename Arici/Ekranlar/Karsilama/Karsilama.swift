@@ -41,7 +41,7 @@ private let sayfalar: [KarsilamaSayfasi] = [
     .init(baslik: "Satış ve stok tek yerde", soz: "Satışların, stoğun, zekat ve hediyelerin, giderlerin hepsi tek yerde. Kimden ne alacağın da hesapta.", ses: "karsilama_3", gorseller: ["SimgeSatis", "SimgeHediye", "SimgeZekat"]),
     .init(baslik: "Hatırlatmalar", soz: "İzin verirsen, Dağıtım ve Çıkım günü sabah seni uyarırım. Günün işlerini de unutturmam.", ses: "karsilama_4", gorseller: ["SimgeSezon"]),
     .init(baslik: "Verilerin güvende", soz: "Giriş yaparsan verilerin bulutta saklanır, telefonların eşitlenir. İstersen girişsiz de kullanabilirsin.", ses: "karsilama_5", gorseller: ["SimgeYedek"]),
-    .init(baslik: "Yakında: sesle kayıt", soz: "Eller dolu mu? Yakında bana söyleyeceksin, ben yazacağım. Hadi başlayalım!", ses: "karsilama_6", gorseller: []),
+    .init(baslik: "Bana emret!", soz: "Ekrandaki Vızıltı'ya dokun, kovanını anlat: “3 numaralı kovan, ana görüldü, 8 çerçeve.” Formu ben doldururum, sen kontrol edip kaydedersin. Hadi başlayalım!", ses: "karsilama_6", gorseller: []),
 ]
 
 struct KarsilamaEkrani: View {
@@ -231,9 +231,7 @@ private struct SayfaIcerigi: View {
                     .frame(width: 110, height: 110)
                     .background(RadialGradient(colors: [Renk.bal, Renk.bal.opacity(0.55)], center: .center, startRadius: 0, endRadius: 60), in: Circle())
                     .overlay(Circle().strokeBorder(Renk.acikBal, lineWidth: 2))
-                Text("YAKINDA").font(Yazi.nunito(12, .heavy)).foregroundStyle(Renk.ormanKoyu)
-                    .padding(.horizontal, 8).padding(.vertical, 3).background(.white, in: RoundedRectangle(cornerRadius: 10))
-                    .offset(x: 18, y: -6)
+
             }
         } else {
             HStack(spacing: -14) {
@@ -285,12 +283,19 @@ struct Vizilti: View {
     }
 }
 
-/// Ayarlar › Vızıltı: ses ve tanıtımı tekrar göster.
+/// Ayarlar › Vızıltı: ses, balon, bal sağımı ortalaması, kılavuz, anlamadıklarım, (yönetici) gelen öneriler, tanıtım.
 struct ViziltiAyarlariBolumu: View {
     @Environment(\.dismiss) private var kapat
+    @Environment(OturumYoneticisi.self) private var oturum
     @State private var ses = KarsilamaDurumu.paylasilan.sesAcik
+    @State private var kilavuz = false
+    @State private var anlamadi = false
+    @State private var oneriler = false
+    @State private var yonetici = false
+    private var ayar: ViziltiAyari { .paylasilan }
 
     var body: some View {
+        @Bindable var a = ayar
         Section(header: Label("Vızıltı", systemImage: "ladybug")) {
             Toggle(isOn: $ses) {
                 Label {
@@ -302,11 +307,58 @@ struct ViziltiAyarlariBolumu: View {
             }
             .tint(Renk.orman2)
             .onChange(of: ses) { _, v in KarsilamaDurumu.paylasilan.sesAcik = v }
+            Toggle(isOn: $a.balonAcik) {
+                Label {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Sesle kayıt balonu").foregroundStyle(Renk.metin)
+                        Text(ayar.balonAcik ? "Ekranın kenarında yüzer" : "Ana sayfa simgelerinin en solunda").font(Yazi.minik).foregroundStyle(Renk.metin2)
+                    }
+                } icon: { Image(systemName: "mic") }
+            }
+            .tint(Renk.orman2)
+            Stepper(value: $a.cerceveBasiKg, in: 0.5...6, step: 0.5) {
+                Label("Bal sağımı: çerçeve başı \(String(format: ayar.cerceveBasiKg == ayar.cerceveBasiKg.rounded() ? "%.0f" : "%.1f", ayar.cerceveBasiKg).replacingOccurrences(of: ".", with: ",")) kg", systemImage: "drop").foregroundStyle(Renk.metin)
+            }
+            Button { kilavuz = true } label: { satir("Nasıl kullanılır", "Örnek cümleler, neleri anlar", "questionmark.circle") }
+            Button { anlamadi = true } label: {
+                satir("Anlamadıklarım", ayar.anlamadiklari.isEmpty ? "Vızıltı'nın anlamadığı cümleler burada birikir" : "\(ayar.anlamadiklari.count) cümle", "text.bubble")
+            }
+            if yonetici { Button { oneriler = true } label: { satir("Gelen öneriler", "Kullanıcıların gönderdiği cümleler", "tray.full") } }
             Button {
                 kapat()
                 KarsilamaDurumu.paylasilan.goster = true
-            } label: {
-                Label("Tanıtımı tekrar göster", systemImage: "arrow.counterclockwise").foregroundStyle(Renk.metin)
+            } label: { satir("Tanıtımı tekrar göster", "Vızıltı uygulamayı yeniden anlatsın", "arrow.counterclockwise") }
+        }
+        .sheet(isPresented: $kilavuz) { ViziltiKilavuzu() }
+        .sheet(isPresented: $anlamadi) { ViziltiAnlamadiklari() }
+        .sheet(isPresented: $oneriler) { ViziltiOneriler() }
+        .task(id: oturum.durum == .girisli) { yonetici = oturum.durum == .girisli ? await ViziltiOneri.yoneticiMi() : false }
+    }
+
+    private func satir(_ baslik: String, _ alt: String, _ simge: String) -> some View {
+        Label {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(baslik).foregroundStyle(Renk.metin)
+                Text(alt).font(Yazi.minik).foregroundStyle(Renk.metin2)
+            }
+        } icon: { Image(systemName: simge) }
+    }
+}
+
+/// Ayarlar › Varroa ilaçları (muayenedeki seçim listesi; tanımsızsa varsayılanlar).
+struct VarroaIlaclariBolumu: View {
+    @Environment(VeriDeposu.self) private var depo
+    @State private var yeni = ""
+    var body: some View {
+        Section(header: Label("Varroa ilaçları", systemImage: "ladybug"), footer: Text("Silmek için sola kaydır.")) {
+            ForEach(depo.varroaIlaclari, id: \.self) { t in Label(t, systemImage: "cross.vial").foregroundStyle(Renk.metin) }
+                .onDelete { i in let l = depo.varroaIlaclari; depo.ayarDegistir { a in a.varroaTreatments = l.enumerated().filter { !i.contains($0.offset) }.map(\.element) } }
+            HStack {
+                TextField("Yeni ilaç / yöntem", text: $yeni)
+                Button { let l = depo.varroaIlaclari + [yeni.trimmingCharacters(in: .whitespaces)]; depo.ayarDegistir { $0.varroaTreatments = l }; yeni = "" } label: {
+                    Image(systemName: "plus.circle.fill").font(.system(size: 26)).foregroundStyle(yeni.isEmpty ? Renk.krem2 : Renk.orman2)
+                }
+                .buttonStyle(.borderless).disabled(yeni.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
     }
