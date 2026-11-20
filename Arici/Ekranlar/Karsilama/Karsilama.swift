@@ -54,15 +54,9 @@ struct KarsilamaEkrani: View {
     @State private var izin: UNAuthorizationStatus = .notDetermined
 
     var body: some View {
-        ZStack {
-            Renk.orman.ignoresSafeArea()
-            Image("ArkaManzara").resizable().scaledToFill().ignoresSafeArea()
-            LinearGradient(stops: [
-                .init(color: .black.opacity(0.15), location: 0), .init(color: .clear, location: 0.3),
-                .init(color: Renk.orman.opacity(0.55), location: 0.55), .init(color: Renk.orman.opacity(0.95), location: 1),
-            ], startPoint: .top, endPoint: .bottom).ignoresSafeArea()
-
-            VStack(spacing: 0) {
+        // Arka plan .background içinde: scaledToFill resim ZStack'te olunca kabı ekrandan geniş yapıp
+        // içeriği taşırıyordu (TestFlight 3.0 / 231'de karşılama metni görünmüyordu).
+        VStack(spacing: 0) {
                 HStack {
                     Button {
                         ses.toggle(); durum.sesAcik = ses
@@ -105,7 +99,21 @@ struct KarsilamaEkrani: View {
                     }
                 }
                 .padding(.horizontal, 24).padding(.vertical, 16)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            ZStack {
+                Renk.orman
+                GeometryReader { g in
+                    Image("ArkaManzara").resizable().scaledToFill()
+                        .frame(width: g.size.width, height: g.size.height).clipped()
+                }
+                LinearGradient(stops: [
+                    .init(color: .black.opacity(0.15), location: 0), .init(color: .clear, location: 0.3),
+                    .init(color: Renk.orman.opacity(0.55), location: 0.55), .init(color: Renk.orman.opacity(0.95), location: 1),
+                ], startPoint: .top, endPoint: .bottom)
             }
+            .ignoresSafeArea()
         }
         .preferredColorScheme(.dark)
         .task { izin = await Hatirlatici.izinDurumu() }
@@ -184,27 +192,33 @@ private struct SayfaIcerigi: View {
     let konusuyor: Bool
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30)) { ctx in
-            let t = ctx.date.timeIntervalSinceReferenceDate
-            let y = sin(t * 2 * .pi / 2.8) * 6
-            let x = sin(t * 2 * .pi / 4.6) * 4
-            let nabiz = konusuyor ? 1 + 0.02 * (sin(t * 2 * .pi / 0.84) + 1) : 1
-            VStack(spacing: 0) {
-                gorsel.frame(height: 150)
-                Spacer().frame(height: 12)
-                Vizilti(konusuyor: konusuyor)
-                    .frame(width: 150, height: 225)
-                    .scaleEffect(nabiz)
-                    .offset(x: x, y: y)
-                Spacer().frame(height: 10)
-                Text(s.baslik).font(Yazi.nunito(28, .heavy)).foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.75), radius: 5, y: 2).multilineTextAlignment(.center)
-                Spacer().frame(height: 8)
-                Text(s.soz).font(Yazi.nunito(17, .semibold)).foregroundStyle(.white.opacity(0.95)).lineSpacing(3)
-                    .shadow(color: .black.opacity(0.75), radius: 5, y: 2).multilineTextAlignment(.center)
+        GeometryReader { geo in
+            // Küçük ekranda (iPhone SE vb.) görseller yüksekliğe göre küçülür; metin her zaman görünür.
+            let k = min(1, max(0.5, (geo.size.height - 190) / 400))
+            TimelineView(.animation(minimumInterval: 1.0 / 30)) { ctx in
+                let t = ctx.date.timeIntervalSinceReferenceDate
+                let y = sin(t * 2 * .pi / 2.8) * 6
+                let x = sin(t * 2 * .pi / 4.6) * 4
+                let nabiz = konusuyor ? 1 + 0.02 * (sin(t * 2 * .pi / 0.84) + 1) : 1
+                VStack(spacing: 0) {
+                    gorsel.frame(height: 150 * k).scaleEffect(k)
+                    Spacer().frame(height: 12 * k)
+                    Vizilti(konusuyor: konusuyor)
+                        .frame(width: 150 * k, height: 225 * k)
+                        .scaleEffect(nabiz)
+                        .offset(x: x, y: y)
+                    Spacer().frame(height: 10 * k)
+                    Text(s.baslik).font(Yazi.nunito(28, .heavy)).foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.75), radius: 5, y: 2).multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.7).lineLimit(2)
+                    Spacer().frame(height: 8)
+                    Text(s.soz).font(Yazi.nunito(17, .semibold)).foregroundStyle(.white.opacity(0.95)).lineSpacing(3)
+                        .shadow(color: .black.opacity(0.75), radius: 5, y: 2).multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.75).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 24)
+                .frame(width: geo.size.width, height: geo.size.height)
             }
-            .padding(.horizontal, 24)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 

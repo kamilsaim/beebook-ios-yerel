@@ -154,13 +154,29 @@ public struct Muayene: HamKayitli, Equatable, Sendable {
     public var date: String? { get { metin("date") } set { metinYaz("date", newValue) } }
     public var queenSeen: Bool? { get { bool("queenSeen") } set { boolYaz("queenSeen", newValue) } }
     public var eggs: Bool? { get { bool("eggs") } set { boolYaz("eggs", newValue) } }
+    /// Açık (sırlanmamış) yavru var mı
+    public var openBrood: Bool? { get { bool("openBrood") } set { boolYaz("openBrood", newValue) } }
+    /// Kapalı (sırlı) yavru var mı
+    public var cappedBrood: Bool? { get { bool("cappedBrood") } set { boolYaz("cappedBrood", newValue) } }
     /// duzenli | seyrek | yok
     public var brood: String? { get { metin("brood") } set { metinYaz("brood", newValue) } }
     /// guclu | orta | zayif
     public var strength: String? { get { metin("strength") } set { metinYaz("strength", newValue) } }
     public var feeding: String? { get { metin("feeding") } set { metinYaz("feeding", newValue) } }
     public var note: String? { get { metin("note") } set { metinYaz("note", newValue) } }
+    /// Varroa: sayılan/düşen akar
+    public var varroaCount: Double? { get { sayi("varroaCount") } set { sayiYaz("varroaCount", newValue) } }
+    /// Varroa işlemi: takildi | cikarildi | uygulandi
+    public var varroaAction: String? { get { metin("varroaAction") } set { metinYaz("varroaAction", newValue) } }
+    /// Varroa ilacı/yöntemi (settings.varroaTreatments'tan)
+    public var varroaTreatment: String? { get { metin("varroaTreatment") } set { metinYaz("varroaTreatment", newValue) } }
 }
+
+/// Varsayılan varroa ilaçları/yöntemleri (settings.varroaTreatments tanımsızsa). Android ile aynı.
+public let varsayilanVarroaIlaclari = ["Amitraz", "Flumetrin", "Oksalik asit", "Formik asit", "Timol", "Fluvalinat"]
+
+/// Şerit takıldıktan kaç gün sonra çıkarılması hatırlatılır (ilaç prospektüslerinde genelde 6 hafta).
+public let VARROA_SERIT_GUN = 42
 
 /// Stok ürün tanımı (`settings.stockTypes[]`): `{v, l, unit}` + isteğe bağlı `zakat`, `image`.
 public struct UrunTanimi: HamKayitli, Equatable, Sendable {

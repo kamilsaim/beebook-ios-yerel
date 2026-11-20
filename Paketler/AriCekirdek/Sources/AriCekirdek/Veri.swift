@@ -119,6 +119,9 @@ public struct Ayarlar: Codable, Equatable, Sendable, HamKayitli {
     public var beeRaces: [String]? { get { metinler("beeRaces") } set { metinlerYaz("beeRaces", newValue) } }
     public var saleTypeOrder: [String]? { get { metinler("saleTypeOrder") } set { metinlerYaz("saleTypeOrder", newValue) } }
     public var qrLastPass: Double? { get { sayi("qrLastPass") } set { sayiYaz("qrLastPass", newValue) } }
+    public var varroaTreatments: [String]? { get { metinler("varroaTreatments") } set { metinlerYaz("varroaTreatments", newValue) } }
+    /// Kovan kartlarının elle sırası (kovan id listesi) — bkz. KovanSirasi.
+    public var hiveOrder: [String]? { get { metinler("hiveOrder") } set { metinlerYaz("hiveOrder", newValue) } }
 
     /// `{v, l}` listesi (gider türleri) — ham.
     public var expenseTypes: [Kayit]? {
